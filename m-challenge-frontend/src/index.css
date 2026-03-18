@@ -1,0 +1,111 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(45, 122, 255, 0.15); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(45, 122, 255, 0.3); }
+
+/* Animations */
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pulse-slow { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+@keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
+
+.animate-fadeInUp { animation: fadeInUp 0.5s ease-out; }
+.animate-fadeIn { animation: fadeIn 0.4s ease-out; }
+.animate-pulse-slow { animation: pulse-slow 2s ease-in-out infinite; }
+.animate-spin-slow { animation: spin-slow 3s linear infinite; }
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent 0%, rgba(45,122,255,0.08) 50%, transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+/* RTL support */
+[dir="rtl"] { direction: rtl; text-align: right; }
+
+/* Hero gradient overlay */
+.hero-bg {
+  background: linear-gradient(160deg, #0a1a40 0%, #0f2560 30%, #153580 60%, #1a50aa 100%);
+  position: relative;
+}
+.hero-bg::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 120%, rgba(45,122,255,0.15) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* Card glow */
+.card-glow {
+  position: relative;
+  overflow: hidden;
+}
+.card-glow::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(45,122,255,0.5), transparent);
+}
+
+/* Progress bar */
+.progress-track { background: rgba(255,255,255,0.06); }
+.progress-fill { background: linear-gradient(90deg, #2d7aff, #5a9aff); transition: width 0.5s ease; }
+
+/* Score circle */
+.score-ring { transition: stroke-dashoffset 1s ease-out; }
+
+/* Tab underline */
+.tab-active { box-shadow: inset 0 -2px 0 #2d7aff; }
+
+/* Severity colors */
+.sev-critical { color: #fb7185; }
+.sev-high { color: #f97316; }
+.sev-medium { color: #fbbf24; }
+.sev-low { color: #2d7aff; }
+.sev-info { color: #8ea0c4; }
+
+.sev-bg-critical { background: rgba(251,113,133,0.12); border-color: rgba(251,113,133,0.2); }
+.sev-bg-high { background: rgba(249,115,22,0.12); border-color: rgba(249,115,22,0.2); }
+.sev-bg-medium { background: rgba(251,191,36,0.12); border-color: rgba(251,191,36,0.2); }
+.sev-bg-low { background: rgba(45,122,255,0.12); border-color: rgba(45,122,255,0.2); }
+.sev-bg-info { background: rgba(142,160,196,0.08); border-color: rgba(142,160,196,0.15); }
+
+/* Hide scrollbar utility */
+.hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+
+
+/* Fix input text - black on white */
+
+/* ===== INPUT & SELECT TEXT COLORS ===== */
+/* All inputs inside hero sections: dark text (white bg) */
+.hero-bg input:not([type="checkbox"]):not([type="radio"]) {
+  color: #111827 !important;
+  caret-color: #111827 !important;
+}
+.hero-bg input::placeholder {
+  color: rgba(0,0,0,0.4) !important;
+}
+/* Select dropdowns: always white on dark */
+select, select option {
+  color: #fff !important;
+  background-color: #1e293b !important;
+}
+
+/* Login input text always white */
+.login-input,
+.login-input:-webkit-autofill,
+.login-input:-webkit-autofill:hover,
+.login-input:-webkit-autofill:focus {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}

@@ -1,0 +1,397 @@
+// ============================================================
+// M-Challenge Security Scanner - Database Schema
+// All entities from the architecture spec mapped to PostgreSQL
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// USER & AUTH
+// ============================================================
+
+model User {
+  id              String    @id @default(uuid())
+  email           String    @unique
+  passwordHash    String    @map("password_hash")
+  fullName        String?   @map("full_name")
+  role            UserRole  @default(BASIC_SCANS)
+  plan            Plan      @default(FREE)
+  scansRemaining  Int       @default(20) @map("scans_remaining")
+  lastScanDate    DateTime? @map("last_scan_date")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  webScans             WebScan[]
+  emailScans           EmailScan[]
+  webScanSchedules     WebScanSchedule[]
+  emailScanSchedules   EmailScanSchedule[]
+  threatIntelSchedules ThreatIntelSchedule[]
+  scanHistories        ScanHistory[]
+  executiveReports     ExecutiveReport[]
+  subscription         Subscription?
+
+  @@map("users")
+}
+
+enum UserRole {
+  BASIC_SCANS
+  FULL_SCANS
+  ADMIN
+}
+
+enum Plan {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+// ============================================================
+// WEB SCAN
+// ============================================================
+
+model WebScan {
+  id                   String    @id @default(uuid())
+  userId               String?   @map("user_id")
+  url                  String
+  domain               String
+  parentScanId         String?   @map("parent_scan_id")
+  isParentScan         Boolean   @default(false) @map("is_parent_scan")
+  discoveredSubdomains String[]  @default([]) @map("discovered_subdomains")
+
+  // Scan configuration
+  scanProfile          String    @default("standard") @map("scan_profile")
+  status               ScanStatus @default(PENDING)
+  progress             Int       @default(0)
+  stage                String    @default("INIT")
+
+  // Scores
+  riskScore            Float     @default(0) @map("risk_score")
+  webSecurityScore     Float     @default(0) @map("web_security_score")
+  dnsSecurityScore     Float     @default(0) @map("dns_security_score")
+  emailSecurityScore   Float     @default(0) @map("email_security_score")
+
+  // Findings (JSON)
+  findingsCount        Json?     @map("findings_count")      // {critical,high,medium,low,info}
+  findings             Json?                                   // Finding[]
+  dnsAnalysis          Json?     @map("dns_analysis")
+  exposureFindings     Json?     @map("exposure_findings")
+  exposuresFound       Int       @default(0) @map("exposures_found")
+  discoveryMetrics     Json?     @map("discovery_metrics")
+  robotsAnalysis       Json?     @map("robots_analysis")
+  detailedEvidence     Json?     @map("detailed_evidence")
+  tlsAnalysis          Json?     @map("tls_analysis")
+  httpAnalysis         Json?     @map("http_analysis")
+  cookies              Json?
+  corsAnalysis         Json?     @map("cors_analysis")
+  assets               Json?
+  technologies         Json?
+  attackSurface        Json?     @map("attack_surface")
+  scoreBreakdown       Json?     @map("score_breakdown")
+
+  // NMAP / Threat Intel
+  nmapScan             Json?     @map("nmap_scan")
+  threatIntelData      Json?     @map("threat_intel_data")
+
+  // Discovery
+  hostScans            Json?     @map("host_scans")
+  discovery            Json?
+  blockageEvents       Json?     @map("blockage_events")
+  scanHealth           Json?     @map("scan_health")
+
+  // Stats
+  pagesScanned         Int       @default(0) @map("pages_scanned")
+  requestsMade         Int       @default(0) @map("requests_made")
+  scanDurationSeconds  Int       @default(0) @map("scan_duration_seconds")
+  errorMessage         String?   @map("error_message")
+
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  user                 User?     @relation(fields: [userId], references: [id])
+
+  @@index([domain])
+  @@index([status])
+  @@index([createdAt])
+  @@index([userId])
+  @@map("web_scans")
+}
+
+// ============================================================
+// EMAIL SCAN
+// ============================================================
+
+model EmailScan {
+  id                  String     @id @default(uuid())
+  userId              String?    @map("user_id")
+  domain              String
+  status              ScanStatus @default(PENDING)
+  progress            Int        @default(0)
+  currentStage        String?    @map("current_stage")
+  isScheduled         Boolean    @default(false) @map("is_scheduled")
+  scheduleId          String?    @map("schedule_id")
+
+  // Score
+  emailSecurityScore  Float      @default(0) @map("email_security_score")
+  scoreBreakdown      Json?      @map("score_breakdown")     // {spf,dkim,dmarc,relay,misc,ports}
+  scoreRating         String?    @map("score_rating")
+
+  // Records
+  dnsRecords          Json?      @map("dns_records")
+  whoisInfo           Json?      @map("whois_info")
+  mxAnalysis          Json?      @map("mx_analysis")
+  spfRecord           Json?      @map("spf_record")
+  dkimRecord          Json?      @map("dkim_record")
+  dmarcRecord         Json?      @map("dmarc_record")
+  smtpTests           Json?      @map("smtp_tests")
+  blacklistStatus     Json?      @map("blacklist_status")
+  portScan            Json?      @map("port_scan")
+  abuseipdb           Json?
+  mxtoolboxLinks      Json?      @map("mxtoolbox_links")
+
+  // Results
+  findings            Json?
+  recommendations     String[]   @default([])
+
+  // Email status
+  lastEmailStatus     String?    @map("last_email_status")
+  lastEmailCount      Int?       @map("last_email_count")
+
+  errorMessage        String?    @map("error_message")
+  createdAt           DateTime   @default(now()) @map("created_at")
+  updatedAt           DateTime   @updatedAt @map("updated_at")
+
+  user                User?      @relation(fields: [userId], references: [id])
+
+  @@index([domain])
+  @@index([status])
+  @@index([createdAt])
+  @@map("email_scans")
+}
+
+// ============================================================
+// SCAN STATUS ENUM
+// ============================================================
+
+enum ScanStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
+// ============================================================
+// SCHEDULES
+// ============================================================
+
+model WebScanSchedule {
+  id                String    @id @default(uuid())
+  userId            String    @map("user_id")
+  url               String
+  userEmail         String    @map("user_email")
+  notifyEmails      String[]  @default([]) @map("notify_emails")
+  frequency         Frequency @default(WEEKLY)
+  startTime         String    @default("09:00") @map("start_time")
+  notifyOnComplete  Boolean   @default(true) @map("notify_on_complete")
+  notifyOnCritical  Boolean   @default(true) @map("notify_on_critical")
+  customMessage     String?   @map("custom_message")
+  isActive          Boolean   @default(true) @map("is_active")
+  jobId             String?   @map("job_id")        // BullMQ job ID
+  lastScanId        String?   @map("last_scan_id")
+  lastScanDate      DateTime? @map("last_scan_date")
+  lastScore         Float?    @map("last_score")
+  lastEmailStatus   String?   @map("last_email_status")
+  lastEmailCount    Int?      @map("last_email_count")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  user              User      @relation(fields: [userId], references: [id])
+
+  @@map("web_scan_schedules")
+}
+
+model EmailScanSchedule {
+  id                String    @id @default(uuid())
+  userId            String    @map("user_id")
+  domain            String
+  userEmail         String    @map("user_email")
+  notifyEmails      String[]  @default([]) @map("notify_emails")
+  frequency         Frequency @default(WEEKLY)
+  startTime         String    @default("09:00") @map("start_time")
+  notifyOnComplete  Boolean   @default(true) @map("notify_on_complete")
+  notifyOnCritical  Boolean   @default(true) @map("notify_on_critical")
+  isActive          Boolean   @default(true) @map("is_active")
+  jobId             String?   @map("job_id")
+  lastScanId        String?   @map("last_scan_id")
+  lastScanDate      DateTime? @map("last_scan_date")
+  lastScore         Float?    @map("last_score")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  user              User      @relation(fields: [userId], references: [id])
+
+  @@map("email_scan_schedules")
+}
+
+model ThreatIntelSchedule {
+  id                     String    @id @default(uuid())
+  userId                 String    @map("user_id")
+  target                 String
+  userEmail              String    @map("user_email")
+  notifyEmails           String[]  @default([]) @map("notify_emails")
+  frequency              Frequency @default(WEEKLY)
+  startTime              String    @default("09:00") @map("start_time")
+  notifyOnComplete       Boolean   @default(true) @map("notify_on_complete")
+  notifyOnCritical       Boolean   @default(true) @map("notify_on_critical")
+  isActive               Boolean   @default(true) @map("is_active")
+  jobId                  String?   @map("job_id")
+  lastScanId             String?   @map("last_scan_id")
+  lastScanDate           DateTime? @map("last_scan_date")
+  lastScore              Float?    @map("last_score")
+
+  // NMAP config (stored as JSON)
+  nmapConfig             Json?     @map("nmap_config")
+
+  createdAt              DateTime  @default(now()) @map("created_at")
+  updatedAt              DateTime  @updatedAt @map("updated_at")
+
+  user                   User      @relation(fields: [userId], references: [id])
+
+  @@map("threat_intel_schedules")
+}
+
+enum Frequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+// ============================================================
+// SCHEDULE EXECUTION LOGS
+// ============================================================
+
+model ScheduleExecutionLog {
+  id            String   @id @default(uuid())
+  scheduleId    String   @map("schedule_id")
+  scheduleType  String   @map("schedule_type")    // web | email | threat
+  target        String
+  status        String   @default("success")       // success | failed
+  scanIds       String[] @default([]) @map("scan_ids")
+  errorMessage  String?  @map("error_message")
+  executedAt    DateTime @default(now()) @map("executed_at")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([scheduleId])
+  @@index([createdAt])
+  @@map("schedule_execution_logs")
+}
+
+// ============================================================
+// SCAN HISTORY (for trending)
+// ============================================================
+
+model ScanHistory {
+  id               String   @id @default(uuid())
+  userId           String?  @map("user_id")
+  target           String
+  userEmail        String?  @map("user_email")
+  attackScore      Float    @default(0) @map("attack_score")
+  riskLevel        String   @default("low") @map("risk_level")
+  emailRisk        Float    @default(0) @map("email_risk")
+  webRisk          Float    @default(0) @map("web_risk")
+  networkRisk      Float    @default(0) @map("network_risk")
+  totalDeductions  Float    @default(0) @map("total_deductions")
+  deductionsDetail Json?    @map("deductions_detail")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  user             User?    @relation(fields: [userId], references: [id])
+
+  @@index([target])
+  @@index([createdAt])
+  @@map("scan_histories")
+}
+
+// ============================================================
+// EXECUTIVE REPORTS
+// ============================================================
+
+model ExecutiveReport {
+  id            String   @id @default(uuid())
+  userId        String?  @map("user_id")
+  target        String
+  userEmail     String?  @map("user_email")
+  attackScore   Float    @default(0) @map("attack_score")
+  riskLevel     String   @default("low") @map("risk_level")
+  pdfUrl        String?  @map("pdf_url")
+  fileSizeKb    Float?   @map("file_size_kb")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  user          User?    @relation(fields: [userId], references: [id])
+
+  @@map("executive_reports")
+}
+
+// ============================================================
+// ADMIN EMAIL SETTINGS
+// ============================================================
+
+model AdminEmailSettings {
+  id              String   @id @default(uuid())
+  provider        String   @default("smtp")         // smtp | microsoft_graph
+
+  // SMTP
+  smtpHost        String?  @map("smtp_host")
+  smtpPort        Int?     @map("smtp_port")
+  smtpUser        String?  @map("smtp_user")
+  smtpPassword    String?  @map("smtp_password")
+
+  // Microsoft Graph
+  msTenantId      String?  @map("ms_tenant_id")
+  msClientId      String?  @map("ms_client_id")
+  msClientSecret  String?  @map("ms_client_secret")
+
+  // Common
+  fromEmail       String?  @map("from_email")
+  fromName        String?  @map("from_name")
+  replyTo         String?  @map("reply_to")
+  testEmail       String?  @map("test_email")
+  lastTestDate    DateTime? @map("last_test_date")
+  lastTestStatus  String?   @map("last_test_status")
+
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("admin_email_settings")
+}
+
+// ============================================================
+// SUBSCRIPTION (Stripe)
+// ============================================================
+
+model Subscription {
+  id                    String    @id @default(uuid())
+  userId                String    @unique @map("user_id")
+  userEmail             String    @map("user_email")
+  plan                  Plan      @default(FREE)
+  status                String    @default("active")   // active|canceled|past_due|pending
+  stripeSubscriptionId  String?   @map("stripe_subscription_id")
+  stripeCustomerId      String?   @map("stripe_customer_id")
+  currentPeriodStart    DateTime? @map("current_period_start")
+  currentPeriodEnd      DateTime? @map("current_period_end")
+  cancelAtPeriodEnd     Boolean   @default(false) @map("cancel_at_period_end")
+  canceledAt            DateTime? @map("canceled_at")
+  amountPaid            Float?    @map("amount_paid")
+  currency              String?   @default("usd")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  user                  User      @relation(fields: [userId], references: [id])
+
+  @@map("subscriptions")
+}

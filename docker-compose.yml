@@ -1,0 +1,68 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: mchallenge
+      POSTGRES_USER: mchallenge
+      POSTGRES_PASSWORD: mchallenge
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mchallenge"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./m-challenge-backend
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"
+    env_file:
+      - ./.env
+    environment:
+      DATABASE_URL: "postgresql://mchallenge:mchallenge@postgres:5432/mchallenge?schema=public"
+      TZ: "Asia/Jerusalem"
+      NODE_TLS_REJECT_UNAUTHORIZED: "0"
+      REDIS_URL: "redis://redis:6379"
+      NODE_ENV: production
+      PORT: 3001
+      HOST: 0.0.0.0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./m-challenge-frontend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:3000"
+    volumes:
+      - ./ssl/server.crt:/etc/ssl/server.crt:ro
+      - ./ssl/server.key:/etc/ssl/server.key:ro
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:

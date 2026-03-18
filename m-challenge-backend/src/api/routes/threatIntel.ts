@@ -72,7 +72,7 @@ export async function threatIntelRoutes(app: FastifyInstance) {
   app.get('/client-ip', async (request: any, reply: any) => {
     const h = request.headers;
     const cfIp = h['cf-connecting-ip'];
-    const xff = h['x-forwarded-for'];
+    const xff = request.headers["x-forwarded-for"] || request.headers["x-real-ip"];
     const xReal = h['x-real-ip'];
     let ip = 'Unknown';
     if (cfIp) ip = Array.isArray(cfIp) ? cfIp[0] : cfIp;

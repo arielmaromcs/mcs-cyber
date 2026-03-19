@@ -213,6 +213,7 @@ model WebScanSchedule {
 
   user              User      @relation(fields: [userId], references: [id])
 
+  description      String?         @map("description")
   @@map("web_scan_schedules")
 }
 
@@ -236,6 +237,7 @@ model EmailScanSchedule {
 
   user              User      @relation(fields: [userId], references: [id])
 
+  description      String?         @map("description")
   @@map("email_scan_schedules")
 }
 
@@ -263,6 +265,7 @@ model ThreatIntelSchedule {
 
   user                   User      @relation(fields: [userId], references: [id])
 
+  description      String?         @map("description")
   @@map("threat_intel_schedules")
 }
 

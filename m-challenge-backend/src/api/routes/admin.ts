@@ -63,7 +63,7 @@ export async function adminRoutes(app: FastifyInstance) {
   // PATCH /api/admin/users/:userId
   app.patch('/users/:userId', { preHandler: [(app as any).requireAdmin] }, async (request, reply) => {
     const { userId } = request.params as { userId: string };
-    const { role, scans_remaining, plan } = request.body as any;
+    const { role, scans_remaining, plan, fullName, newPassword } = request.body as any;
     const target = await prisma.user.findUnique({ where: { id: userId } });
     if (!target) return reply.status(404).send({ error: 'User not found' });
 

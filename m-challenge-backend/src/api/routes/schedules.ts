@@ -10,6 +10,7 @@ const createSchema = z.object({
     frequency: z.enum(['daily', 'weekly', 'monthly']).default('weekly'),
     start_time: z.string().default('09:00'),
     notify_emails: z.array(z.string().email()).max(5).default([]),
+  description: z.string().optional(),
     notify_on_complete: z.boolean().default(true),
     notify_on_critical: z.boolean().default(true),
     custom_message: z.string().optional(),

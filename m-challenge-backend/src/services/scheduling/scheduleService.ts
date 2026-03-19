@@ -25,6 +25,8 @@ export class ScheduleService {
           url: data.target,
           userEmail,
           notifyEmails: data.notify_emails || [],
+        description: data.description || null,
+        description: data.description || null,
           frequency: freq,
           startTime: data.start_time || '09:00',
           notifyOnComplete: data.notify_on_complete ?? true,
@@ -43,6 +45,7 @@ export class ScheduleService {
           domain: data.target,
           userEmail,
           notifyEmails: data.notify_emails || [],
+        description: data.description || null,
           frequency: freq,
           startTime: data.start_time || '09:00',
           notifyOnComplete: data.notify_on_complete ?? true,
@@ -60,6 +63,7 @@ export class ScheduleService {
           target: data.target,
           userEmail,
           notifyEmails: data.notify_emails || [],
+        description: data.description || null,
           frequency: freq,
           startTime: data.start_time || '09:00',
           notifyOnComplete: data.notify_on_complete ?? true,
@@ -89,7 +93,7 @@ export class ScheduleService {
     return { success: true, is_active: newStatus };
   }
 
-  async testScanIndividual(scanType: string, target: string, nmapConfig?: any, fromSchedule = false) {
+  async testScanIndividual(scanType: string, target: string, nmapConfig?: any, fromSchedule = true) {
     if (scanType === 'web') {
       const scan = await prisma.webScan.create({
         data: {

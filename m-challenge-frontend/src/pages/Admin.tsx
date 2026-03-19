@@ -1,6 +1,6 @@
 import { useLang } from '../hooks/useLang';
 import { useState, useEffect } from 'react';
-import { Info, Settings, Trash2, Plus, CheckCircle2, Send, Shield } from 'lucide-react';
+import { Info, Settings, Trash2, Plus, CheckCircle2, Send, Shield, Pencil, Key } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
 import { Card, Button, Tabs, Input, Spinner } from '../components/ui';
@@ -21,6 +21,10 @@ export default function Admin() {
   const [verified, setVerified] = useState(false);
   const [emailMsg, setEmailMsg] = useState('');
   const [busy, setBusy] = useState('');
+  const [editUser, setEditUser] = useState<any>(null);
+  const [editName, setEditName] = useState('');
+  const [editPassword, setEditPassword] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
 
   useEffect(() => { loadAll(); }, []);
   const loadAll = async () => {
@@ -33,6 +37,19 @@ export default function Admin() {
   const invite = async () => { setInviting(true); try { await api.inviteUser(inviteEmail, inviteRole); setInviteEmail(''); loadAll(); } catch {} setInviting(false); };
   const updateU = async (id: string, data: any) => { try { await api.updateUser(id, data); loadAll(); } catch {} };
   const delU = async (id: string) => { if (confirm('Delete?')) { try { await api.deleteUser(id); loadAll(); } catch {} } };
+
+  const saveEdit = async () => {
+    setEditSaving(true);
+    try {
+      const data: any = {};
+      if (editName) data.fullName = editName;
+      if (editPassword) data.newPassword = editPassword;
+      await api.updateUser(editUser.id, data);
+      setEditUser(null); setEditName(''); setEditPassword('');
+      loadAll();
+    } catch {}
+    setEditSaving(false);
+  };
 
   const doEmail = async (action: string) => {
     setBusy(action); setEmailMsg('');
@@ -99,12 +116,32 @@ export default function Admin() {
                     <div className="text-xs text-mc-txt3 w-20 text-center">
                       {u.role === 'ADMIN' ? '∞' : (u.scansRemaining ?? u.scans_remaining ?? 0)} scans
                     </div>
+                    <button onClick={() => { setEditUser(u); setEditName(u.fullName || u.full_name || ''); setEditPassword(''); }}
+                      className="p-1.5 rounded hover:bg-mc-bg2 text-mc-txt3 hover:text-mc-brand transition"><Pencil size={13} /></button>
                     <button onClick={() => delU(u.id)} disabled={u.role === 'ADMIN'}
                       className="p-1.5 rounded hover:bg-mc-bg2 text-mc-txt3 hover:text-mc-rose transition disabled:opacity-20"><Trash2 size={13} /></button>
                   </Card>
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Edit User Modal */}
+        {editUser && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+            <div className="bg-mc-bg2 border border-mc-cardBorder rounded-2xl p-6 w-full max-w-sm mx-4">
+              <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2"><Pencil size={14} className="text-mc-brand" /> Edit User</h3>
+              <div className="space-y-3">
+                <div className="text-xs text-mc-txt3">{editUser.email}</div>
+                <Input label="Full Name" value={editName} onChange={(e: any) => setEditName(e.target.value)} placeholder="John Doe" />
+                <Input label="New Password (leave empty to keep current)" type="password" value={editPassword} onChange={(e: any) => setEditPassword(e.target.value)} placeholder="••••••••" />
+              </div>
+              <div className="flex gap-2 mt-4">
+                <Button onClick={saveEdit} disabled={editSaving}>{editSaving ? <Spinner size={14} /> : <><Key size={14} /> Save</>}</Button>
+                <Button variant="secondary" onClick={() => setEditUser(null)}>Cancel</Button>
+              </div>
+            </div>
           </div>
         )}
 

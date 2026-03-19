@@ -18,6 +18,7 @@ export default function Schedules() {
   const [cFreq, setCFreq] = useState('weekly');
   const [cTime, setCTime] = useState('09:00');
   const [cEmails, setCEmails] = useState('');
+  const [cDescription, setCDescription] = useState('');
   const [creating, setCreating] = useState(false);
   const [editSchedule, setEditSchedule] = useState<any>(null);
   const [runningId, setRunningId] = useState('');
@@ -55,7 +56,7 @@ export default function Schedules() {
     setCreating(true);
     try {
       const schedData: any = {
-        target: cTarget, frequency: cFreq, start_time: cTime,
+        target: cTarget, frequency: cFreq, start_time: cTime, description: cDescription || undefined,
         notify_emails: cEmails.split(',').map(e => e.trim()).filter(Boolean).slice(0, 5),
       };
       if (cType === 'threat') {
@@ -69,7 +70,7 @@ export default function Schedules() {
         };
       }
       await api.createSchedule(cType, schedData);
-      setShowCreate(false); setCTarget(''); setCEmails('');
+      setShowCreate(false); setCTarget(''); setCEmails(''); setCDescription('');
       load();
     } catch {}
     setCreating(false);
@@ -170,6 +171,7 @@ export default function Schedules() {
               <Input label="Start Time" type="time" value={cTime} onChange={(e: any) => setCTime(e.target.value)} />
             </div>
             <Input label="Notify Emails (comma-separated, max 5)" value={cEmails} onChange={(e: any) => setCEmails(e.target.value)} placeholder="user@example.com" />
+            <Input label="Description (optional)" value={cDescription} onChange={(e: any) => setCDescription(e.target.value)} placeholder="e.g. Production server, Client XYZ" className="mt-3" />
             {/* Threat Intel Advanced Options */}
             {cType === 'threat' && (
               <div className="mt-4 space-y-4">

@@ -26,7 +26,7 @@ export class ScheduleService {
           userEmail,
           notifyEmails: data.notify_emails || [],
         description: data.description || null,
-        description: data.description || null,
+
           frequency: freq,
           startTime: data.start_time || '09:00',
           notifyOnComplete: data.notify_on_complete ?? true,

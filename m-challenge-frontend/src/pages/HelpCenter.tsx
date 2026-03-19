@@ -1,154 +1,105 @@
 import { useState } from 'react';
 import { Globe, Mail, Crosshair, Target, Calendar, Settings, HelpCircle, ChevronDown, ChevronUp, CheckCircle2, ArrowRight } from 'lucide-react';
-
-const sections = [
-  {
-    id: 'web',
-    icon: Globe,
-    color: 'blue',
-    title: 'Web Scanner',
-    what: 'Analyzes websites for security vulnerabilities including SSL/TLS issues, exposed headers, XSS risks, outdated software, and misconfigurations.',
-    steps: [
-      'Go to Web Scanner from the sidebar',
-      'Enter the full URL (e.g. https://yoursite.com)',
-      'Select a scan profile: Quick, Standard, or Deep',
-      'Click Scan and wait for results',
-      'Review findings grouped by severity',
-    ],
-    results: [
-      { label: 'Critical / High', desc: 'Immediate action required — these expose your site to attacks' },
-      { label: 'Medium', desc: 'Should be addressed soon — potential attack vectors' },
-      { label: 'Low / Info', desc: 'Best practices and informational notices' },
-    ],
-    next: ['Fix Critical and High findings first', 'Re-scan after making changes', 'Schedule recurring scans for continuous monitoring'],
-  },
-  {
-    id: 'email',
-    icon: Mail,
-    color: 'amber',
-    title: 'Email Scanner',
-    what: 'Checks your domain\'s email security posture by analyzing SPF, DKIM, DMARC records, open mail ports, and blacklist status.',
-    steps: [
-      'Go to Email Scanner from the sidebar',
-      'Enter your domain name (e.g. yourdomain.com)',
-      'Click Scan — no login required',
-      'Review DNS record status and recommendations',
-    ],
-    results: [
-      { label: 'SPF Missing / Weak', desc: 'Attackers can send emails pretending to be you' },
-      { label: 'DMARC Missing', desc: 'No policy to handle unauthenticated emails' },
-      { label: 'Blacklisted IPs', desc: 'Your mail server may be flagged as spam' },
-    ],
-    next: ['Add or fix SPF, DKIM, DMARC records via your DNS provider', 'Set DMARC policy to "reject" for maximum protection', 'Monitor blacklist status regularly'],
-  },
-  {
-    id: 'threat',
-    icon: Crosshair,
-    color: 'rose',
-    title: 'Threat Intelligence',
-    what: 'Performs port scanning and service discovery on a target IP or domain using Nmap, identifying exposed services and potential attack surfaces.',
-    steps: [
-      'Go to Threat Intelligence from the sidebar',
-      'Enter an IP address or domain',
-      'Choose a scan profile (Quick, Service Discovery, or Security Posture)',
-      'Configure DNS record types to resolve (A, MX, TXT)',
-      'Click Start Scan and monitor progress',
-    ],
-    results: [
-      { label: 'Open Ports', desc: 'Services exposed to the internet — reduce attack surface by closing unused ports' },
-      { label: 'Service Versions', desc: 'Outdated versions may have known CVEs' },
-      { label: 'CVE Findings', desc: 'Known vulnerabilities matched against detected services' },
-    ],
-    next: ['Close unnecessary ports via firewall rules', 'Update services with known CVEs', 'Use scheduled scans to detect changes over time'],
-  },
-  {
-    id: 'mitre',
-    icon: Target,
-    color: 'purple',
-    title: 'MITRE ATT&CK Analysis',
-    what: 'Maps your scan findings to the MITRE ATT&CK framework — a globally recognized knowledge base of attacker tactics and techniques.',
-    steps: [
-      'Run a Web or Threat Intelligence scan first',
-      'Go to MITRE Analysis from the sidebar',
-      'Select a recent scan to analyze',
-      'Review mapped tactics and techniques',
-      'Use the visual matrix to understand your exposure',
-    ],
-    results: [
-      { label: 'Tactics', desc: 'High-level attacker goals (e.g. Initial Access, Persistence, Exfiltration)' },
-      { label: 'Techniques', desc: 'Specific methods attackers use — each mapped to your findings' },
-      { label: 'Coverage Score', desc: 'How many ATT&CK techniques your current posture addresses' },
-    ],
-    next: ['Focus on high-impact tactics first', 'Share the report with your security team', 'Use findings to prioritize remediation efforts'],
-  },
-  {
-    id: 'schedules',
-    icon: Calendar,
-    color: 'emerald',
-    title: 'Scheduled Scans',
-    what: 'Automates recurring security scans on your assets so you\'re always aware of changes in your security posture without manual effort.',
-    steps: [
-      'Go to Scheduled Scans from the sidebar',
-      'Click "+ New Schedule"',
-      'Select scan type: Web, Email, or Port Exposure',
-      'Enter the target URL, domain, or IP',
-      'Add a description (e.g. "Production Server")',
-      'Set frequency (Daily / Weekly / Monthly) and time',
-      'Add notification emails',
-      'Click Create',
-    ],
-    results: [
-      { label: 'Active', desc: 'Schedule is running at the defined interval' },
-      { label: 'Execution Logs', desc: 'History of all past scan runs with status and targets' },
-      { label: 'Email Reports', desc: 'Automatic reports sent to your team after each scan' },
-    ],
-    next: ['Use the ⚡ button to run a schedule immediately', 'Add multiple email recipients for team visibility', 'Use descriptions to identify assets clearly in reports'],
-  },
-  {
-    id: 'admin',
-    icon: Settings,
-    color: 'slate',
-    title: 'Admin Panel',
-    what: 'Manage users, roles, scan limits, and email delivery settings for the entire platform.',
-    steps: [
-      'Go to Admin Panel (visible to Admins only)',
-      'Invite new users via email — they receive login credentials automatically',
-      'Assign roles: Basic, Full, or Admin',
-      'Edit users to change their name or reset their password',
-      'Configure email settings (SMTP or Microsoft 365) for report delivery',
-      'Verify and test email before saving',
-    ],
-    results: [
-      { label: 'Basic', desc: 'Access to Web and Email scanners only' },
-      { label: 'Full', desc: 'All scanners including Threat Intel and MITRE' },
-      { label: 'Admin', desc: 'Full access + user management + system settings' },
-    ],
-    next: ['Always verify email settings before enabling scheduled scans', 'Reset passwords for users who are locked out', 'Monitor user activity via scan history'],
-  },
-];
-
-const colorMap: Record<string, string> = {
-  blue: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
-  amber: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
-  rose: 'text-rose-400 bg-rose-500/10 border-rose-500/20',
-  purple: 'text-purple-400 bg-purple-500/10 border-purple-500/20',
-  emerald: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
-  slate: 'text-slate-300 bg-slate-500/10 border-slate-500/20',
-};
+import { useLang } from '../hooks/useLang';
 
 export default function HelpCenter() {
+  const { t, lang } = useLang();
   const [open, setOpen] = useState<string | null>(null);
 
+  const sections = [
+    {
+      id: 'web', icon: Globe, color: 'blue',
+      title: 'Web Scanner',
+      what: t('help_web_what'),
+      steps: [t('help_web_s1'), t('help_web_s2'), t('help_web_s3'), t('help_web_s4'), t('help_web_s5')],
+      results: [
+        { label: t('help_web_r1l'), desc: t('help_web_r1d') },
+        { label: t('help_web_r2l'), desc: t('help_web_r2d') },
+        { label: t('help_web_r3l'), desc: t('help_web_r3d') },
+      ],
+      next: [t('help_web_n1'), t('help_web_n2'), t('help_web_n3')],
+    },
+    {
+      id: 'email', icon: Mail, color: 'amber',
+      title: 'Email Scanner',
+      what: t('help_email_what'),
+      steps: [t('help_email_s1'), t('help_email_s2'), t('help_email_s3'), t('help_email_s4')],
+      results: [
+        { label: t('help_email_r1l'), desc: t('help_email_r1d') },
+        { label: t('help_email_r2l'), desc: t('help_email_r2d') },
+        { label: t('help_email_r3l'), desc: t('help_email_r3d') },
+      ],
+      next: [t('help_email_n1'), t('help_email_n2'), t('help_email_n3')],
+    },
+    {
+      id: 'threat', icon: Crosshair, color: 'rose',
+      title: 'Threat Intelligence',
+      what: t('help_threat_what'),
+      steps: [t('help_threat_s1'), t('help_threat_s2'), t('help_threat_s3'), t('help_threat_s4'), t('help_threat_s5')],
+      results: [
+        { label: t('help_threat_r1l'), desc: t('help_threat_r1d') },
+        { label: t('help_threat_r2l'), desc: t('help_threat_r2d') },
+        { label: t('help_threat_r3l'), desc: t('help_threat_r3d') },
+      ],
+      next: [t('help_threat_n1'), t('help_threat_n2'), t('help_threat_n3')],
+    },
+    {
+      id: 'mitre', icon: Target, color: 'purple',
+      title: 'MITRE ATT&CK Analysis',
+      what: t('help_mitre_what'),
+      steps: [t('help_mitre_s1'), t('help_mitre_s2'), t('help_mitre_s3'), t('help_mitre_s4'), t('help_mitre_s5')],
+      results: [
+        { label: t('help_mitre_r1l'), desc: t('help_mitre_r1d') },
+        { label: t('help_mitre_r2l'), desc: t('help_mitre_r2d') },
+        { label: t('help_mitre_r3l'), desc: t('help_mitre_r3d') },
+      ],
+      next: [t('help_mitre_n1'), t('help_mitre_n2'), t('help_mitre_n3')],
+    },
+    {
+      id: 'schedules', icon: Calendar, color: 'emerald',
+      title: t('Scheduled Scans title'),
+      what: t('help_sched_what'),
+      steps: [t('help_sched_s1'), t('help_sched_s2'), t('help_sched_s3'), t('help_sched_s4'), t('help_sched_s5'), t('help_sched_s6'), t('help_sched_s7')],
+      results: [
+        { label: t('help_sched_r1l'), desc: t('help_sched_r1d') },
+        { label: t('help_sched_r2l'), desc: t('help_sched_r2d') },
+        { label: t('help_sched_r3l'), desc: t('help_sched_r3d') },
+      ],
+      next: [t('help_sched_n1'), t('help_sched_n2'), t('help_sched_n3')],
+    },
+    {
+      id: 'admin', icon: Settings, color: 'slate',
+      title: 'Admin Panel',
+      what: t('help_admin_what'),
+      steps: [t('help_admin_s1'), t('help_admin_s2'), t('help_admin_s3'), t('help_admin_s4'), t('help_admin_s5')],
+      results: [
+        { label: t('help_admin_r1l'), desc: t('help_admin_r1d') },
+        { label: t('help_admin_r2l'), desc: t('help_admin_r2d') },
+        { label: t('help_admin_r3l'), desc: t('help_admin_r3d') },
+      ],
+      next: [t('help_admin_n1'), t('help_admin_n2'), t('help_admin_n3')],
+    },
+  ];
+
+  const colorMap: Record<string, string> = {
+    blue: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
+    amber: 'text-amber-400 bg-amber-500/10 border-amber-500/20',
+    rose: 'text-rose-400 bg-rose-500/10 border-rose-500/20',
+    purple: 'text-purple-400 bg-purple-500/10 border-purple-500/20',
+    emerald: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+    slate: 'text-slate-300 bg-slate-500/10 border-slate-500/20',
+  };
+
   return (
-    <div>
+    <div dir={lang === 'he' ? 'rtl' : 'ltr'}>
       <div className="hero-bg py-10 px-4">
         <div className="max-w-[900px] mx-auto flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
             <HelpCircle size={20} className="text-white" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-white">Help Center</h1>
-            <p className="text-sm text-blue-100/60">Learn how to use each module effectively</p>
+            <h1 className="text-2xl font-bold text-white">{t('Help Center')}</h1>
+            <p className="text-sm text-blue-100/60">{t('help_subtitle')}</p>
           </div>
         </div>
       </div>
@@ -172,15 +123,12 @@ export default function HelpCenter() {
 
               {isOpen && (
                 <div className="px-5 pb-5 space-y-5 border-t border-mc-cardBorder">
-                  {/* What it does */}
                   <div className="pt-4">
-                    <div className="text-[10px] font-semibold text-mc-txt3 uppercase tracking-wider mb-2">What it does</div>
+                    <div className="text-[10px] font-semibold text-mc-txt3 uppercase tracking-wider mb-2">{t('help_what')}</div>
                     <p className="text-sm text-mc-txt2 leading-relaxed">{s.what}</p>
                   </div>
-
-                  {/* How to use */}
                   <div>
-                    <div className="text-[10px] font-semibold text-mc-txt3 uppercase tracking-wider mb-2">How to use</div>
+                    <div className="text-[10px] font-semibold text-mc-txt3 uppercase tracking-wider mb-2">{t('help_how')}</div>
                     <ol className="space-y-1.5">
                       {s.steps.map((step, i) => (
                         <li key={i} className="flex items-start gap-3 text-sm text-mc-txt2">
@@ -190,10 +138,8 @@ export default function HelpCenter() {
                       ))}
                     </ol>
                   </div>
-
-                  {/* Results */}
                   <div>
-                    <div className="text-[10px] font-semibold text-mc-txt3 uppercase tracking-wider mb-2">What the results mean</div>
+                    <div className="text-[10px] font-semibold text-mc-txt3 uppercase tracking-wider mb-2">{t('help_results')}</div>
                     <div className="space-y-2">
                       {s.results.map((r, i) => (
                         <div key={i} className="flex items-start gap-2">
@@ -203,10 +149,8 @@ export default function HelpCenter() {
                       ))}
                     </div>
                   </div>
-
-                  {/* Next actions */}
                   <div>
-                    <div className="text-[10px] font-semibold text-mc-txt3 uppercase tracking-wider mb-2">Recommended next actions</div>
+                    <div className="text-[10px] font-semibold text-mc-txt3 uppercase tracking-wider mb-2">{t('help_next')}</div>
                     <div className="space-y-1.5">
                       {s.next.map((n, i) => (
                         <div key={i} className="flex items-start gap-2 text-sm text-mc-txt2">

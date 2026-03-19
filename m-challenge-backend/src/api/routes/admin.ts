@@ -71,6 +71,11 @@ export async function adminRoutes(app: FastifyInstance) {
     if (role) data.role = role;
     if (scans_remaining !== undefined) data.scansRemaining = scans_remaining;
     if (plan) data.plan = plan;
+    if (fullName) data.fullName = fullName;
+    if (newPassword) {
+      const bcrypt = await import('bcryptjs');
+      data.passwordHash = await bcrypt.hash(newPassword, 12);
+    }
 
     return await prisma.user.update({ where: { id: userId }, data });
   });

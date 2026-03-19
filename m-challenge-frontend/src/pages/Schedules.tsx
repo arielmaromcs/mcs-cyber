@@ -287,7 +287,7 @@ export default function Schedules() {
           </div>
         ) : (
           <div className="space-y-2">
-            {filtered.length === 0 ? <EmptyState icon={Calendar} title="No schedules" subtitle="Create one to get started" /> :
+            {filtered.length === 0 ? <div className="flex flex-col items-center justify-center py-16"><Calendar size={40} className="text-white/20 mb-4" /><div className="text-lg font-semibold text-white mb-2">No schedules</div><div className="text-sm text-white/50">Create one to get started</div></div> :
               filtered.map((s: any) => {
                 const Icon = TypeIcon(s._type);
                 return (

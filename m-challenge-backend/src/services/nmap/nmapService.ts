@@ -383,7 +383,10 @@ export class NmapService {
       if (job.status === "completed") {
         try {
           const { prisma } = await import("../../config/database");
-          const scheds = await prisma.threatIntelSchedule.findMany({ where: { isActive: true, notifyOnComplete: true } });
+          const schedId = (this as any)._scheduleId;
+          const scheds = schedId 
+            ? await prisma.threatIntelSchedule.findMany({ where: { id: schedId } })
+            : await prisma.threatIntelSchedule.findMany({ where: { isActive: true, notifyOnComplete: true } });
           for (const sched of scheds) {
             if (sched.notifyEmails && sched.notifyEmails.length > 0) {
               const emailSvc = new EmailService();

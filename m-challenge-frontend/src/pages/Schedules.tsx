@@ -294,7 +294,8 @@ export default function Schedules() {
                   <Card key={s.id} className="px-4 py-3 flex items-center gap-3">
                     <Icon size={16} className="text-mc-brand shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-white truncate">{s.url || s.domain || s.target}</div>
+                      {s.description && <div className="text-xs font-semibold text-white">{s.description}</div>}
+                      <div className="text-sm font-medium text-mc-txt2 truncate">{s.url || s.domain || s.target}</div>
                       <div className="text-[10px] text-mc-txt3">{s.frequency} at {s.startTime || s.start_time || '09:00'} • {s.isActive || s.is_active ? 'Active' : 'Paused'}</div>
                     </div>
                     {s.lastScore != null && <span className="text-xs font-mono text-mc-brand">{s.lastScore || s.last_score}</span>}

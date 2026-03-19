@@ -167,10 +167,13 @@ export class WebScannerService {
       // Send email notification only if triggered by scheduler
       if (fromSchedule) {
       try {
-        const schedules = await prisma.webScanSchedule.findMany({ where: { isActive: true, notifyOnComplete: true } });
+        const schedId = (this as any)._scheduleId;
+        const schedules = schedId
+          ? await prisma.webScanSchedule.findMany({ where: { id: schedId } })
+          : await prisma.webScanSchedule.findMany({ where: { isActive: true, notifyOnComplete: true } });
         for (const sched of schedules) {
           const schedDomain = (sched.url || '').replace(/^https?:\/\//, '').replace(/\/.*$/, '');
-          if (schedDomain && domain && (schedDomain.includes(domain) || domain.includes(schedDomain)) && sched.notifyEmails && sched.notifyEmails.length > 0) {
+          if (sched.notifyEmails && sched.notifyEmails.length > 0) {
             const emailSvc = new EmailService();
             const topFindings = this.allFindings.slice(0, 15).map((f: any) => ({ severity: f.severity, title: f.title, description: (f.description || '').slice(0, 120) }));
             const recs = this.allFindings.filter((f: any) => f.severity === 'critical' || f.severity === 'high').slice(0, 5).map((f: any) => 'Fix: ' + f.title);

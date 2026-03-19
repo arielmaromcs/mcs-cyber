@@ -118,6 +118,7 @@ export class ScheduleService {
       });
       const scanner = new EmailScannerService();
       (scanner as any)._fromSchedule = fromSchedule;
+      (scanner as any)._scheduleId = (this as any)._currentScheduleId;
       scanner.run(scan.id, domain).catch(err => console.error(`Test email scan failed: ${err.message}`));
       return { scan_id: scan.id, status: 'started' };
     }
@@ -126,6 +127,7 @@ export class ScheduleService {
       const { NmapService } = await import('../nmap/nmapService');
       const nmap = new NmapService();
       (nmap as any)._fromSchedule = fromSchedule;
+      (nmap as any)._scheduleId = (this as any)._currentScheduleId;
       const result = await nmap.startThreatIntelNmap(target, nmapConfig || {
         scan_a_records: true, scan_mx_records: true, scan_txt_records: false,
         profile: 'baseline_syn_1000',
@@ -152,6 +154,7 @@ export class ScheduleService {
     for (const schedule of webSchedules) {
       if (!this.isDue(schedule.frequency, schedule.lastScanDate, schedule.startTime, now)) continue;
       try {
+        (this as any)._currentScheduleId = schedule.id;
         const result = await this.testScanIndividual('web', schedule.url);
         await prisma.webScanSchedule.update({
           where: { id: schedule.id },
@@ -180,6 +183,7 @@ export class ScheduleService {
     for (const schedule of emailSchedules) {
       if (!this.isDue(schedule.frequency, schedule.lastScanDate, schedule.startTime, now)) continue;
       try {
+        (this as any)._currentScheduleId = schedule.id;
         const result = await this.testScanIndividual('email', schedule.domain);
         await prisma.emailScanSchedule.update({
           where: { id: schedule.id },
@@ -206,6 +210,7 @@ export class ScheduleService {
     for (const schedule of threatSchedules) {
       if (!this.isDue(schedule.frequency, schedule.lastScanDate, schedule.startTime, now)) continue;
       try {
+        (this as any)._currentScheduleId = schedule.id;
         const result = await this.testScanIndividual('threat', schedule.target, schedule.nmapConfig as any);
         await prisma.threatIntelSchedule.update({
           where: { id: schedule.id },

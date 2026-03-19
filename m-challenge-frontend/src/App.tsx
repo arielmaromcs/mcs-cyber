@@ -9,6 +9,7 @@ import MitrePage from './pages/Mitre';
 import SchedulesPage from './pages/Schedules';
 import AdminPage from './pages/Admin';
 import AboutPage from './pages/About';
+import HelpCenterPage from './pages/HelpCenter';
 import LoginPage from './pages/Login';
 
 export default function App() {
@@ -24,6 +25,7 @@ export default function App() {
           <Route path="/schedules" element={<SchedulesPage />} />
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/about" element={<AboutPage />} />
+          <Route path="/help" element={<HelpCenterPage />} />
           <Route path="/login" element={<LoginPage />} />
         </Routes>
       </Layout>

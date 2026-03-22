@@ -10,6 +10,7 @@ import SchedulesPage from './pages/Schedules';
 import AdminPage from './pages/Admin';
 import AboutPage from './pages/About';
 import HelpCenterPage from './pages/HelpCenter';
+import TlsScanPage from './pages/TlsScan';
 import LoginPage from './pages/Login';
 
 export default function App() {
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/help" element={<HelpCenterPage />} />
+          <Route path="/tls" element={<TlsScanPage />} />
           <Route path="/login" element={<LoginPage />} />
         </Routes>
       </Layout>

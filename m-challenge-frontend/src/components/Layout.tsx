@@ -1,7 +1,7 @@
 import ClientIpBadge from "./ClientIpBadge";
 import { ReactNode, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Shield, Globe, Mail, Crosshair, Target, Calendar, Settings, Info, LogOut, Languages, ChevronDown, PanelLeftClose, PanelLeft, HelpCircle } from 'lucide-react';
+import { Shield, Globe, Mail, Crosshair, Target, Calendar, Settings, Info, LogOut, Languages, ChevronDown, PanelLeftClose, PanelLeft, HelpCircle, Lock } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useLang } from '../hooks/useLang';
 
@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { to: '/threat', icon: Crosshair, label: 'Threat Intelligence', requiresAuth: 'full' },
   { to: '/mitre', icon: Target, label: 'MITRE Analysis', requiresAuth: 'full' },
   { to: '/schedules', icon: Calendar, label: 'Scheduled Scans', requiresAuth: 'any' },
+  { to: '/tls', icon: Lock, label: 'TLS Scanner', requiresAuth: 'any' },
   { to: '/help', icon: HelpCircle, label: 'Help Center', requiresAuth: '' },
 ];
 

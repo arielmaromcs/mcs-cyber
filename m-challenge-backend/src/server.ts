@@ -13,6 +13,7 @@ import { mitreRoutes } from './api/routes/mitre';
 import { scheduleRoutes } from './api/routes/schedules';
 import { adminRoutes } from './api/routes/admin';
 import { scanDataRoutes } from './api/routes/scanData';
+import { tlsScanRoutes } from './api/routes/tlsScan';
 import { initScheduler } from './jobs/scheduler';
 
 const app = Fastify({
@@ -61,6 +62,7 @@ app.get('/api/health', async () => ({ status: 'ok', timestamp: new Date().toISOS
 
 // ---- Register API routes ----
 app.register(authRoutes, { prefix: '/api/auth' });
+app.register(tlsScanRoutes, { prefix: '/api/tls-scan' });
 app.register(webScanRoutes, { prefix: '/api/web-scan' });
 app.register(emailScanRoutes, { prefix: '/api/email-scan' });
 app.register(threatIntelRoutes, { prefix: '/api/threat-intel' });

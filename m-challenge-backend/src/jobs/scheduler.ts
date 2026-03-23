@@ -23,6 +23,7 @@ async function runScheduledScan(type: string, scheduleId: string) {
     if (type === 'web') {
       schedule = await prisma.webScanSchedule.findUnique({ where: { id: scheduleId } });
       if (!schedule || !schedule.isActive) return;
+      (scheduleService as any)._currentScheduleId = scheduleId;
       const result = await scheduleService.testScanIndividual('web', schedule.url, undefined, true);
       await prisma.webScanSchedule.update({ where: { id: scheduleId }, data: { lastScanId: result.scan_id, lastScanDate: new Date() } });
       await prisma.scheduleExecutionLog.create({ data: { scheduleId, scheduleType: 'web', target: schedule.url, status: 'success', scanIds: result.scan_id ? [result.scan_id] : [] } });
@@ -30,6 +31,7 @@ async function runScheduledScan(type: string, scheduleId: string) {
     } else if (type === 'email') {
       schedule = await prisma.emailScanSchedule.findUnique({ where: { id: scheduleId } });
       if (!schedule || !schedule.isActive) return;
+      (scheduleService as any)._currentScheduleId = scheduleId;
       const result = await scheduleService.testScanIndividual('email', schedule.domain, undefined, true);
       await prisma.emailScanSchedule.update({ where: { id: scheduleId }, data: { lastScanId: result.scan_id, lastScanDate: new Date() } });
       await prisma.scheduleExecutionLog.create({ data: { scheduleId, scheduleType: 'email', target: schedule.domain, status: 'success', scanIds: result.scan_id ? [result.scan_id] : [] } });
@@ -37,6 +39,7 @@ async function runScheduledScan(type: string, scheduleId: string) {
     } else if (type === 'threat') {
       schedule = await prisma.threatIntelSchedule.findUnique({ where: { id: scheduleId } });
       if (!schedule || !schedule.isActive) return;
+      (scheduleService as any)._currentScheduleId = scheduleId;
       const result = await scheduleService.testScanIndividual('threat', schedule.target, schedule.nmapConfig as any, true);
       await prisma.threatIntelSchedule.update({ where: { id: scheduleId }, data: { lastScanDate: new Date() } });
       await prisma.scheduleExecutionLog.create({ data: { scheduleId, scheduleType: 'threat', target: schedule.target, status: 'success', scanIds: result.scan_id ? [result.scan_id] : [] } });

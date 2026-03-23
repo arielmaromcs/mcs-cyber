@@ -119,11 +119,12 @@ export default function ThreatIntel() {
         setSelectedIps([input]);
         setStep('profile');
       } else {
-        const data = await api.startNmap(cleanTarget(input), { scan_a_records: true, scan_mx_records: true, profile: 'baseline_syn_1000', scan_all_discovered_ports: false, client_approved: false });
+        const data = await api.startNmap(cleanTarget(input), { scan_a_records: true, scan_mx_records: false, profile: 'baseline_syn_1000', scan_all_discovered_ports: false, client_approved: false });
         const disc = data.discovery || {};
         const allIps = disc.ips || [];
         setDnsResolution({ all_ips: allIps, a_records: (disc.a_records || allIps).map((ip: string) => ({ ip })), mx_records: disc.mx_records || [], txt_records: disc.txt_records || [], ns_records: disc.ns_records || [], aaaa_records: disc.aaaa_records || [], mx_ips: disc.mx_ips || {} });
-        setSelectedIps((disc.a_records || []).map((ip: string) => ip));
+        const aIps = (disc.a_records || []).map((ip: string) => typeof ip === 'string' ? ip : (ip as any).ip || ip);
+        setSelectedIps(aIps);
         if (data.jobs?.length) {
           for (const job of data.jobs) {
             if (job.job_id && job.status !== 'completed') startPollingDiscovery(job.ip, job.job_id);
@@ -160,6 +161,12 @@ export default function ThreatIntel() {
           const stdout = data.result?.stdout || data.stdout || '';
           const svcs = data.result?.open_ports || data.open_ports || parseServicesFromStdout(stdout);
           setDiscoveryResults(prev => ({ ...prev, [ip]: { open_ports: svcs.map((s: any) => s.port || s), services: svcs, completed_at: new Date().toISOString() } }));
+          // Force step update after short delay
+          setTimeout(() => {
+            if (Object.keys(pollIntervalsRef.current).length === 0) {
+              setStep(prev => prev === 'scanning' ? 'decision' : prev);
+            }
+          }, 500);
         } else if (data.status === 'failed' || data.status === 'error') {
           clearInterval(pollIntervalsRef.current[ip]); delete pollIntervalsRef.current[ip];
           setError('Scan failed for ' + ip);
@@ -172,12 +179,14 @@ export default function ThreatIntel() {
 
   useEffect(() => {
     if (step !== 'scanning') return;
-    const pending = Object.keys(pollIntervalsRef.current).length;
     const completed = Object.keys(discoveryResults).length;
-    if (pending === 0 && completed > 0 && completed >= selectedIps.length) {
+    if (completed > 0 && completed >= selectedIps.length) {
       setStep('decision');
       const decisions: Record<string, ScanDecision> = {};
-      for (const [ip, dr] of Object.entries(discoveryResults)) decisions[ip] = { scanType: 'cve_only', selectedPorts: dr.open_ports };
+      for (const [ip, dr] of Object.entries(discoveryResults)) {
+        const ports = dr.services?.map((s: any) => s.port || s).filter(Boolean) || dr.open_ports || [];
+        decisions[ip] = { scanType: 'cve_only', selectedPorts: ports };
+      }
       setScanDecisions(decisions);
     }
   }, [step, discoveryResults, selectedIps.length]);
@@ -373,7 +382,7 @@ export default function ThreatIntel() {
         )}
 
         {step === 'decision' && (<div className="space-y-4 mb-4">
-          {Object.entries(discoveryResults).map(([ip, dr]) => (
+          {Object.entries(discoveryResults).filter(([ip]) => selectedIps.includes(ip)).map(([ip, dr]) => (
             <Card key={ip} className="p-5">
               <h3 className="text-sm font-semibold text-white mb-1 font-mono">{ip}</h3>
               <p className="text-[10px] text-white/30 mb-3">{dr.services.length} open ports discovered</p>
@@ -446,7 +455,33 @@ export default function ThreatIntel() {
             {er.raw_output && (<details className="mb-3"><summary className="text-xs text-white/30 cursor-pointer hover:text-white/50">Raw NSE Output</summary><pre className="mt-2 p-3 rounded-lg bg-[#0a0e1a] text-emerald-400 text-[10px] font-mono max-h-64 overflow-auto whitespace-pre-wrap">{er.raw_output}</pre></details>)}
           </div>
         ))}
-        {step === 'results' && <Button onClick={resetScan} variant="secondary" className="w-full">{t("New Scan")}</Button>}
+        {step === 'results' && (
+          <div className="space-y-3 mt-4">
+            <div className="flex justify-end">
+              <button onClick={() => {
+                console.log('discoveryResults:', JSON.stringify(discoveryResults));
+                console.log('exposureResults:', JSON.stringify(exposureResults));
+                const allData = {
+                  domain,
+                  results: Object.entries(exposureResults).map(([ip, er]: any) => ({
+                    ip,
+                    cves: er.cves || [],
+                    nse_findings: er.nse_findings || [],
+                    discovery: {
+                      services: discoveryResults[ip]?.services || [],
+                      open_ports: discoveryResults[ip]?.open_ports || []
+                    }
+                  }))
+                };
+                console.log('allData:', JSON.stringify(allData));
+                downloadReport(generateThreatReport(allData, domain), 'threat-scan-' + domain.replace(/[^a-z0-9]/gi,'-') + '.html');
+              }} className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-mc-brand/10 border border-mc-brand/20 text-mc-brand text-xs font-medium hover:bg-mc-brand/20 transition">
+                <Download size={14} /> Download Report
+              </button>
+            </div>
+            <Button onClick={resetScan} variant="secondary" className="w-full">{t("New Scan")}</Button>
+          </div>
+        )}
 
         {step === 'idle' && history.length > 0 && (
           <Card className="p-4"><h3 className="text-sm font-semibold text-white mb-2">Scan History</h3>

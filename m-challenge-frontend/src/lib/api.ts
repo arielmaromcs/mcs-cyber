@@ -67,6 +67,11 @@ export const api = {
   toggleSchedule: (type: string, id: string, status: boolean) => request<any>('PATCH', '/schedules/toggle', { type, schedule_id: id, current_status: status }),
   testSchedule: (scanType: string, target: string) => request<any>('POST', '/schedules/test', { scan_type: scanType, target }),
   tlsScan: (target: string) => request<any>('POST', '/tls-scan/scan', { target }),
+  runScheduleNow: (type: string, scheduleId: string) => request<any>('POST', '/schedules/run-now/' + type + '/' + scheduleId, {}),
+  getClients: () => request<any>('GET', '/clients'),
+  createClient: (data: any) => request<any>('POST', '/clients', data),
+  updateClient: (id: string, data: any) => request<any>('PATCH', '/clients/' + id, data),
+  deleteClient: (id: string) => request<any>('DELETE', '/clients/' + id),
   listSchedules: () => request<any>('GET', '/schedules/list'),
   scheduleLogs: () => request<any>('GET', '/schedules/logs'),
 

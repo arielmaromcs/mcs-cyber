@@ -154,7 +154,7 @@ export class EmailScannerService {
               await emailSvc.sendScanNotification(
                 sched.notifyEmails.filter(Boolean),
                 domain, 'Email Security', totalScore, undefined,
-                { findings, recommendations, scoreBreakdown: { spf: Math.min(18, spfScore), dkim: Math.min(18, dkimScore), dmarc: Math.min(22, dmarcScore), relay: Math.min(18, relayScore), misc: Math.min(12, miscScore), ports: Math.min(12, portsScore) }, rating }
+                { findings, recommendations, scoreBreakdown: { spf: Math.min(18, spfScore), dkim: Math.min(18, dkimScore), dmarc: Math.min(22, dmarcScore), relay: Math.min(18, relayScore), misc: Math.min(12, miscScore), ports: Math.min(12, portsScore) }, rating, description: sched.description || undefined }
               );
               console.log('[EmailScanner] Notification sent to:', sched.notifyEmails);
             }

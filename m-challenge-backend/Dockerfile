@@ -8,7 +8,7 @@ RUN npx prisma generate
 RUN npx tsc
 
 FROM node:20-alpine
-RUN apk add --no-cache openssl nmap nmap-scripts
+RUN apk add --no-cache openssl nmap nmap-scripts sslscan
 WORKDIR /app
 
 # Copy everything needed at runtime

@@ -32,7 +32,8 @@
     "pino-pretty": "^11.2.2",
     "dotenv": "^16.4.5",
     "uuid": "^10.0.0",
-    "xml2js": "^0.6.2"
+    "xml2js": "^0.6.2",
+    "docx": "^9.0.0"
   },
   "devDependencies": {
     "prisma": "^5.22.0",

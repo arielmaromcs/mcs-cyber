@@ -180,7 +180,7 @@ export class WebScannerService {
             await emailSvc.sendScanNotification(
               sched.notifyEmails.filter(Boolean),
               domain, 'Web Security', riskScore, undefined,
-              { findings: topFindings, recommendations: recs, rating: riskScore >= 80 ? 'Good' : riskScore >= 50 ? 'Fair' : 'Needs Improvement' }
+              { findings: topFindings, recommendations: recs, rating: riskScore >= 80 ? 'Good' : riskScore >= 50 ? 'Fair' : 'Needs Improvement', description: sched.description || undefined }
             );
             console.log('[WebScanner] Notification sent to:', sched.notifyEmails);
           }

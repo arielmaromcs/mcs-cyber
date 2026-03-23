@@ -93,7 +93,7 @@ export class ScheduleService {
     return { success: true, is_active: newStatus };
   }
 
-  async testScanIndividual(scanType: string, target: string, nmapConfig?: any, fromSchedule = true) {
+  async testScanIndividual(scanType: string, target: string, nmapConfig?: any, fromSchedule = false) {
     if (scanType === 'web') {
       const scan = await prisma.webScan.create({
         data: {

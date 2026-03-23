@@ -41,11 +41,12 @@ export class EmailService {
     scanType: string,
     score: number,
     pdfUrl?: string,
-    extras?: { findings?: any[]; recommendations?: string[]; scoreBreakdown?: any; rating?: string }
+    extras?: { findings?: any[]; recommendations?: string[]; scoreBreakdown?: any; rating?: string; description?: string }
   ): Promise<void> {
     const scoreColor = score >= 80 ? '#10b981' : score >= 50 ? '#3b82f6' : score >= 20 ? '#f59e0b' : '#ef4444';
     const rating = (extras && extras.rating) || (score >= 90 ? 'Excellent' : score >= 70 ? 'Good' : score >= 50 ? 'Fair' : 'Needs Improvement');
-    const subject = '[M-Challenge] ' + scanType + ' Scan Complete: ' + target + ' (Score: ' + score + '/100)';
+    const displayName = (extras && extras.description) ? extras.description + ' — ' + target : target;
+    const subject = '[M-Challenge] ' + scanType + ' Scan Complete: ' + displayName + ' (Score: ' + score + '/100)';
 
     let breakdownHtml = '';
     if (extras && extras.scoreBreakdown) {

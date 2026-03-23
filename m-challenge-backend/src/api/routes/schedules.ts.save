@@ -1,4 +1,19 @@
+
+
+
+
+
+
+
 import { FastifyInstance } from 'fastify';
+
+
+
+
+
+
+
+
 import { z } from 'zod';
 import { prisma } from '../../config/database';
 import { ScheduleService } from '../../services/scheduling/scheduleService';
@@ -10,7 +25,6 @@ const createSchema = z.object({
     frequency: z.enum(['daily', 'weekly', 'monthly']).default('weekly'),
     start_time: z.string().default('09:00'),
     notify_emails: z.array(z.string().email()).max(5).default([]),
-  description: z.string().optional(),
     notify_on_complete: z.boolean().default(true),
     notify_on_critical: z.boolean().default(true),
     custom_message: z.string().optional(),
@@ -51,20 +65,6 @@ export async function scheduleRoutes(app: FastifyInstance) {
   app.post('/test', { preHandler: [(app as any).authenticate] }, async (request) => {
     const { scan_type, target, nmap_config } = request.body as any;
     return await scheduleService.testScanIndividual(scan_type, target, nmap_config);
-  });
-
-  // POST /api/schedules/run-now/:type/:scheduleId
-  app.post('/run-now/:type/:scheduleId', { preHandler: [(app as any).authenticate], config: { rawBody: false } }, async (request) => {
-    const { type, scheduleId } = request.params as { type: string; scheduleId: string };
-    let schedule: any;
-    if (type === 'web') schedule = await prisma.webScanSchedule.findUnique({ where: { id: scheduleId } });
-    else if (type === 'email') schedule = await prisma.emailScanSchedule.findUnique({ where: { id: scheduleId } });
-    else if (type === 'threat') schedule = await prisma.threatIntelSchedule.findUnique({ where: { id: scheduleId } });
-    if (!schedule) return { error: 'Schedule not found' };
-    (scheduleService as any)._currentScheduleId = scheduleId;
-    const target = schedule.url || schedule.domain || schedule.target;
-    const result = await scheduleService.testScanIndividual(type as any, target, schedule.nmapConfig, true);
-    return result;
   });
 
   // GET /api/schedules/list

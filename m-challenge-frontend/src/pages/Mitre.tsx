@@ -334,7 +334,10 @@ export default function Mitre() {
               <Card glow className="p-6 mb-5 flex items-center gap-6">
                 <ProgressCircle value={100 - as.score} size={80} stroke={5} />
                 <div className="flex-1">
-                  <div className="text-lg font-bold text-white">Attack Score: {as.score}/100</div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-lg font-bold text-white">Attack Score: {as.score}/100</div>
+                    <MitreDownloadBtn data={result} target={target} />
+                  </div>
                   <div className="text-xs text-mc-txt3 mt-0.5">Rating: <span style={{ color: as.score >= 70 ? '#fb7185' : as.score >= 40 ? '#fbbf24' : '#34d399' }}>{as.rating}</span></div>
                   {as.reasoning && <div className="mt-2 space-y-0.5">{as.reasoning.map((r: string, i: number) => <div key={i} className="text-[11px] text-mc-txt2">• {r}</div>)}</div>}
                 </div>

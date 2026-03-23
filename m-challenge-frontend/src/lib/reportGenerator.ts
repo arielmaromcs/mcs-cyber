@@ -133,53 +133,93 @@ export function generateWebReport(result: any, target: string): string {
 // ─── EMAIL SCAN REPORT ───
 export function generateEmailReport(result: any, target: string): string {
   const score = result.emailSecurityScore || result.email_security_score || 0;
-  const spf = result.spf || {};
-  const dkim = result.dkim || {};
-  const dmarc = result.dmarc || {};
-  const blacklist = result.blacklist || {};
-  const mx = result.mxRecords || result.mx_records || [];
+  const spf = result.spfRecord || result.spf_record || result.spf || {};
+  const dkim = result.dkimRecord || result.dkim_record || result.dkim || {};
+  const dmarc = result.dmarcRecord || result.dmarc_record || result.dmarc || {};
+  const blacklist = result.blacklistStatus || result.blacklist_status || result.blacklist || {};
+  const mx = result.mxAnalysis || result.mx_analysis || result.mxRecords || result.mx_records || {};
+  const mxRecords = mx.records || result.mx_records || [];
+  const dns = result.dnsRecords || result.dns_records || {};
+  const whois = result.whoisInfo || result.whois_info || {};
+  const smtp = result.smtpTests || result.smtp_tests || {};
+  const abuse = result.abuseipdb || {};
+  const findings = result.findings || [];
+  const recs = result.recommendations || [];
+  const bd = result.scoreBreakdown || result.score_breakdown || {};
 
-  return `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Email Security Report - ${target}</title><style>${STYLES}</style></head><body>
-  <div class="container">
-    ${generateHeader('Email Security Scan Report', target, new Date().toLocaleDateString())}
-    <div class="score-section">
-      <div class="score-card"><div class="value" style="color:${scoreColor(score)}">${score}</div><div class="label">Email Security Score</div></div>
-      <div class="score-card"><div class="value ${spf.valid ? 'green' : 'red'}">${spf.valid ? '✓' : '✗'}</div><div class="label">SPF</div></div>
-      <div class="score-card"><div class="value ${dkim.found ? 'green' : 'red'}">${dkim.found ? '✓' : '✗'}</div><div class="label">DKIM</div></div>
-      <div class="score-card"><div class="value ${dmarc.valid ? 'green' : 'red'}">${dmarc.valid ? '✓' : '✗'}</div><div class="label">DMARC</div></div>
-    </div>
+  const spfValid = spf.exists || spf.valid || (spf.record && spf.record.length > 0);
+  const dkimValid = dkim.exists || dkim.found || (dkim.selectors_found?.length > 0);
+  const dmarcValid = dmarc.exists || dmarc.valid || (dmarc.record && dmarc.record.length > 0);
 
-    <div class="section"><h2>SPF Record</h2>
-      <div class="info-row"><span class="k">Status</span><span class="v ${spf.valid ? 'green' : 'red'}">${spf.valid ? 'Valid' : 'Missing/Invalid'}</span></div>
-      ${spf.record ? `<div class="info-row"><span class="k">Record</span><span class="v" style="font-family:monospace;font-size:11px;word-break:break-all">${spf.record}</span></div>` : ''}
-      ${spf.mechanisms ? `<div class="info-row"><span class="k">Mechanisms</span><span class="v">${spf.mechanisms}</span></div>` : ''}
-    </div>
+  const scoreBreakdownHtml = Object.keys(bd).length > 0 ? '<div class="section"><h2>Score Breakdown</h2><div class="score-section">' +
+    Object.entries(bd).map(([k, v]: any) => '<div class="score-card"><div class="value" style="color:' + scoreColor((v/20)*100) + '">' + v + '</div><div class="label">' + k.toUpperCase() + '</div></div>').join('') +
+    '</div></div>' : '';
 
-    <div class="section"><h2>DKIM</h2>
-      <div class="info-row"><span class="k">Status</span><span class="v ${dkim.found ? 'green' : 'red'}">${dkim.found ? 'Found' : 'Not Found'}</span></div>
-      ${dkim.selector ? `<div class="info-row"><span class="k">Selector</span><span class="v">${dkim.selector}</span></div>` : ''}
-    </div>
+  const findingsHtml = findings.length > 0 ? '<div class="section"><h2>Findings (' + findings.length + ')</h2>' +
+    findings.map((f: any) => '<div class="finding-card ' + f.severity + '"><div class="finding-title">' + severityBadge(f.severity) + ' ' + f.title + '</div><div class="finding-desc">' + (f.description || '') + '</div></div>').join('') +
+    '</div>' : '';
 
-    <div class="section"><h2>DMARC</h2>
-      <div class="info-row"><span class="k">Status</span><span class="v ${dmarc.valid ? 'green' : 'red'}">${dmarc.valid ? 'Valid' : 'Missing/Invalid'}</span></div>
-      ${dmarc.record ? `<div class="info-row"><span class="k">Record</span><span class="v" style="font-family:monospace;font-size:11px;word-break:break-all">${dmarc.record}</span></div>` : ''}
-      ${dmarc.policy ? `<div class="info-row"><span class="k">Policy</span><span class="v">${dmarc.policy}</span></div>` : ''}
-    </div>
+  const recsHtml = recs.length > 0 ? '<div class="section"><h2>Recommendations</h2>' +
+    recs.map((r: string) => '<div class="finding-card low"><div class="finding-desc">✓ ' + r + '</div></div>').join('') +
+    '</div>' : '';
 
-    ${(blacklist.listed_on || []).length > 0 ? `<div class="section"><h2>Blacklist Alerts</h2>
-      <table><thead><tr><th>Blacklist</th><th>Status</th></tr></thead><tbody>
-        ${(blacklist.listed_on || []).map((b: any) => `<tr><td>${b}</td><td><span class="badge badge-critical">LISTED</span></td></tr>`).join('')}
-      </tbody></table>
-    </div>` : ''}
+  const dnsHtml = Object.keys(dns).length > 0 ? '<div class="section"><h2>DNS Records</h2>' +
+    ['a_records','mx_records','txt_records','ns_records'].map(type => {
+      const recs2 = dns[type] || [];
+      return recs2.length > 0 ? '<h3>' + type.replace('_', ' ').toUpperCase() + '</h3>' + recs2.map((r: string) => '<div class="info-row"><span class="v" style="font-family:monospace;font-size:11px">' + r + '</span></div>').join('') : '';
+    }).join('') + '</div>' : '';
 
-    ${Array.isArray(mx) && mx.length > 0 ? `<div class="section"><h2>MX Records</h2>
-      <table><thead><tr><th>Priority</th><th>Server</th></tr></thead><tbody>
-        ${mx.map((m: any) => `<tr><td>${m.priority || m.preference || ''}</td><td>${m.exchange || m.server || m.host || (typeof m === 'string' ? m : '')}</td></tr>`).join('')}
-      </tbody></table>
-    </div>` : ''}
+  const whoisHtml = whois.registrar ? '<div class="section"><h2>WHOIS</h2>' +
+    '<div class="two-col">' +
+    (whois.registrar ? '<div class="info-row"><span class="k">Registrar</span><span class="v">' + whois.registrar + '</span></div>' : '') +
+    (whois.created_date ? '<div class="info-row"><span class="k">Created</span><span class="v">' + new Date(whois.created_date).toLocaleDateString() + '</span></div>' : '') +
+    (whois.expiry_date ? '<div class="info-row"><span class="k">Expires</span><span class="v">' + new Date(whois.expiry_date).toLocaleDateString() + '</span></div>' : '') +
+    (whois.country ? '<div class="info-row"><span class="k">Country</span><span class="v">' + whois.country + '</span></div>' : '') +
+    '</div></div>' : '';
 
-    ${generateFooter()}
-  </div></body></html>`;
+  const blacklistHtml = (blacklist.ips_checked?.length > 0) ? '<div class="section"><h2>Blacklist Check</h2>' +
+    '<div class="score-section">' +
+    '<div class="score-card"><div class="value">' + (blacklist.total_ips || 0) + '</div><div class="label">Total IPs</div></div>' +
+    '<div class="score-card"><div class="value red">' + (blacklist.listed_ips_count || 0) + '</div><div class="label">Listed</div></div>' +
+    '<div class="score-card"><div class="value green">' + (blacklist.clean_ips_count || 0) + '</div><div class="label">Clean</div></div>' +
+    '</div>' +
+    '<table><thead><tr><th>IP</th><th>Status</th><th>Lists</th></tr></thead><tbody>' +
+    (blacklist.ips_checked || []).map((ip: any) => '<tr><td>' + ip.ip + '</td><td>' + (ip.listed ? '<span class="badge badge-critical">LISTED</span>' : '<span class="badge badge-low">Clean</span>') + '</td><td>' + (ip.lists?.map((l: any) => l.name || l).join(', ') || '') + '</td></tr>').join('') +
+    '</tbody></table></div>' : '';
+
+  return "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>Email Security Report - " + target + "</title><style>" + STYLES + "</style></head><body>" +
+    "<div class=\"container\">" +
+    generateHeader("Email Security Scan Report", target, new Date().toLocaleDateString()) +
+    "<div class=\"score-section\">" +
+    "<div class=\"score-card\"><div class=\"value\" style=\"color:" + scoreColor(score) + "\">" + score + "</div><div class=\"label\">Email Security Score</div></div>" +
+    "<div class=\"score-card\"><div class=\"value " + (spfValid ? "green" : "red") + "\">" + (spfValid ? "✓" : "✗") + "</div><div class=\"label\">SPF</div></div>" +
+    "<div class=\"score-card\"><div class=\"value " + (dkimValid ? "green" : "red") + "\">" + (dkimValid ? "✓" : "✗") + "</div><div class=\"label\">DKIM</div></div>" +
+    "<div class=\"score-card\"><div class=\"value " + (dmarcValid ? "green" : "red") + "\">" + (dmarcValid ? "✓" : "✗") + "</div><div class=\"label\">DMARC</div></div>" +
+    "</div>" +
+    scoreBreakdownHtml +
+    "<div class=\"section\"><h2>SPF Record</h2>" +
+    "<div class=\"info-row\"><span class=\"k\">Status</span><span class=\"v " + (spfValid ? "green" : "red") + "\">" + (spfValid ? "Valid" : "Missing/Invalid") + "</span></div>" +
+    (spf.record ? "<div class=\"info-row\"><span class=\"k\">Record</span><span class=\"v\" style=\"font-family:monospace;font-size:11px;word-break:break-all\">" + spf.record + "</span></div>" : "") +
+    (spf.lookups !== undefined ? "<div class=\"info-row\"><span class=\"k\">DNS Lookups</span><span class=\"v\">" + spf.lookups + "/10</span></div>" : "") +
+    ((spf.issues || []).map((i: string) => "<div class=\"info-row\"><span class=\"k\">Issue</span><span class=\"v yellow\">⚠ " + i + "</span></div>").join("")) +
+    "</div>" +
+    "<div class=\"section\"><h2>DKIM</h2>" +
+    "<div class=\"info-row\"><span class=\"k\">Status</span><span class=\"v " + (dkimValid ? "green" : "red") + "\">" + (dkimValid ? "Found" : "Not Found") + "</span></div>" +
+    (dkim.selectors_found?.length > 0 ? "<div class=\"info-row\"><span class=\"k\">Selectors</span><span class=\"v\">" + dkim.selectors_found.join(", ") + "</span></div>" : "") +
+    (dkim.key_length ? "<div class=\"info-row\"><span class=\"k\">Key Length</span><span class=\"v\">" + dkim.key_length + " bits</span></div>" : "") +
+    "</div>" +
+    "<div class=\"section\"><h2>DMARC</h2>" +
+    "<div class=\"info-row\"><span class=\"k\">Status</span><span class=\"v " + (dmarcValid ? "green" : "red") + "\">" + (dmarcValid ? "Valid" : "Missing/Invalid") + "</span></div>" +
+    (dmarc.record ? "<div class=\"info-row\"><span class=\"k\">Record</span><span class=\"v\" style=\"font-family:monospace;font-size:11px;word-break:break-all\">" + dmarc.record + "</span></div>" : "") +
+    (dmarc.policy ? "<div class=\"info-row\"><span class=\"k\">Policy</span><span class=\"v\">" + dmarc.policy + "</span></div>" : "") +
+    "</div>" +
+    "<div class=\"section\"><h2>SMTP Configuration</h2>" +
+    "<div class=\"info-row\"><span class=\"k\">Open Relay</span><span class=\"v " + (smtp.relay_open ? "red" : "green") + "\">" + (smtp.relay_open ? "Yes ⚠" : "No ✓") + "</span></div>" +
+    "<div class=\"info-row\"><span class=\"k\">STARTTLS</span><span class=\"v " + (smtp.starttls_supported ? "green" : "red") + "\">" + (smtp.starttls_supported ? "Supported ✓" : "Not Supported ⚠") + "</span></div>" +
+    "</div>" +
+    blacklistHtml + dnsHtml + whoisHtml + findingsHtml + recsHtml +
+    generateFooter() +
+    "</div></body></html>";
 }
 
 // ─── THREAT INTEL REPORT ───
@@ -253,6 +293,56 @@ export function generateMitreReport(data: any, target: string): string {
 
     ${generateFooter()}
   </div></body></html>`;
+}
+
+// ─── TLS SCAN REPORT ───
+export function generateTlsReport(result: any, target: string): string {
+  const versions: any[] = result.versions || [];
+  const cert: any = result.cert || {};
+  const secureCount = versions.filter((v: any) => v.supported && v.risk === 'good').length;
+  const weakCount = versions.filter((v: any) => v.supported && v.risk === 'high').length;
+  const totalCiphers = versions.reduce((a: number, v: any) => a + (v.ciphers?.length || 0), 0);
+  const daysLeft = cert.daysLeft ?? null;
+  const certColor = daysLeft !== null && daysLeft < 30 ? '#ef4444' : daysLeft !== null && daysLeft < 60 ? '#eab308' : '#10b981';
+
+  const versionsHtml = versions.map((v: any) => {
+    const vColor = v.risk === 'high' ? '#ef4444' : v.supported ? '#10b981' : '#64748b';
+    const vStatus = v.supported ? (v.risk === 'high' ? 'SUPPORTED (Deprecated)' : 'Supported') : 'Not Supported';
+    const ciphersHtml = v.ciphers?.length > 0 ? '<table><thead><tr><th>Cipher Suite</th><th>Bits</th><th>Grade</th><th>Flags</th></tr></thead><tbody>' +
+      v.ciphers.map((c: any) => {
+        const gColor = c.grade === 'A' ? '#10b981' : c.grade === 'B' ? '#3b82f6' : c.grade === 'C' ? '#eab308' : '#ef4444';
+        const flags = (c.isWeak ? '<span class="badge badge-critical">WEAK</span>' : '') + (c.isPFS && !c.isWeak ? '<span class="badge badge-low">PFS</span>' : '');
+        return '<tr><td style="font-family:monospace;font-size:12px">' + c.name + '</td><td>' + c.bits + '</td><td style="color:' + gColor + '">' + c.grade + '</td><td>' + flags + '</td></tr>';
+      }).join('') + '</tbody></table>' : '';
+    return '<h3 style="margin:16px 0 8px;color:' + vColor + '">' + v.version + ' &mdash; ' + vStatus + '</h3>' + ciphersHtml;
+  }).join('');
+
+  const certHtml = cert.subject ? '<div class="section"><h2>Certificate</h2>' +
+    '<div class="info-row"><span class="k">Subject</span><span class="v">' + (cert.subject || '') + '</span></div>' +
+    '<div class="info-row"><span class="k">Issuer</span><span class="v">' + (cert.issuer || 'N/A') + '</span></div>' +
+    '<div class="info-row"><span class="k">Valid From</span><span class="v">' + (cert.validFrom || 'N/A') + '</span></div>' +
+    '<div class="info-row"><span class="k">Valid To</span><span class="v" style="color:' + certColor + '">' + (cert.validTo || 'N/A') + ' (' + (daysLeft ?? '?') + ' days left)</span></div>' +
+    (cert.sans?.length > 0 ? '<div class="info-row"><span class="k">SANs</span><span class="v">' + cert.sans.join(', ') + '</span></div>' : '') +
+    '</div>' : '';
+
+  return '<!DOCTYPE html><html><head><meta charset="utf-8"><title>TLS Scan Report - ' + target + '</title><style>' + STYLES + '</style></head><body>' +
+    '<div class="container">' +
+    generateHeader('TLS / SSL Security Report', target, new Date().toLocaleDateString()) +
+    '<div class="score-section">' +
+    '<div class="score-card"><div class="value green">' + secureCount + '</div><div class="label">Secure Versions</div></div>' +
+    '<div class="score-card"><div class="value red">' + weakCount + '</div><div class="label">Weak Versions</div></div>' +
+    '<div class="score-card"><div class="value blue">' + totalCiphers + '</div><div class="label">Total Ciphers</div></div>' +
+    '<div class="score-card"><div class="value" style="color:' + certColor + '">' + (daysLeft ?? '?') + '</div><div class="label">Cert Days Left</div></div>' +
+    '</div>' +
+    certHtml +
+    '<div class="section"><h2>Security Features</h2>' +
+    '<div class="info-row"><span class="k">TLS Fallback SCSV</span><span class="v ' + (result.fallbackScsv ? 'green' : 'red') + '">' + (result.fallbackScsv ? 'Supported' : 'Not Supported') + '</span></div>' +
+    '<div class="info-row"><span class="k">Secure Renegotiation</span><span class="v ' + (result.renegotiation ? 'green' : 'yellow') + '">' + (result.renegotiation ? 'Supported' : 'Not Supported') + '</span></div>' +
+    '<div class="info-row"><span class="k">Compression</span><span class="v ' + (result.compression ? 'red' : 'green') + '">' + (result.compression ? 'Enabled (CRIME risk)' : 'Disabled') + '</span></div>' +
+    '</div>' +
+    '<div class="section"><h2>TLS Versions & Cipher Suites</h2>' + versionsHtml + '</div>' +
+    generateFooter() +
+    '</div></body></html>';
 }
 
 // ─── DOWNLOAD HELPER ───

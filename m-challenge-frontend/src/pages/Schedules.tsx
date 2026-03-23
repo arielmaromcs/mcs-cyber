@@ -88,38 +88,81 @@ export default function Schedules() {
   const [testMsg, setTestMsg] = useState('');
   const [liveScan, setLiveScan] = useState<any>(null);
 
+  const testById = async (type: string, scheduleId: string, target: string) => {
+    try {
+      const r = await (api as any).runScheduleNow(type, scheduleId);
+      const authHeader = { 'Authorization': 'Bearer ' + localStorage.getItem('mc_token') };
+      const scanId = r?.scan_id || r?.jobs?.[0]?.job_id;
+      if (!scanId) return;
+      setLiveScan({ id: scanId, type, target, progress: 0, status: 'RUNNING', stage: 'Starting...' });
+      const jobs = r?.jobs || [{ job_id: scanId }];
+      const poll = setInterval(async () => {
+        try {
+          let status: any;
+          if (type === 'web') {
+            status = await fetch('/api/web-scan/status/' + scanId, { headers: authHeader }).then(r => r.json());
+          } else if (type === 'email') {
+            status = await fetch('/api/email-scan/status/' + scanId, { headers: authHeader }).then(r => r.json());
+          } else if (type === 'threat') {
+            const statuses = await Promise.all(jobs.map((j: any) => fetch('/api/threat-intel/nmap-status/' + j.job_id, { headers: authHeader }).then(r => r.json()).catch(() => null)));
+            const valid = statuses.filter(Boolean);
+            const avgProgress = valid.reduce((a: number, s: any) => a + (s.progress || 0), 0) / (valid.length || 1);
+            const allDone = valid.every((s: any) => s.status === 'completed' || s.status === 'failed');
+            status = { progress: Math.round(avgProgress), status: allDone ? 'COMPLETED' : 'RUNNING', stage: 'Scanning ports...' };
+          }
+          if (status) {
+            setLiveScan((prev: any) => prev ? { ...prev, progress: status.progress || 0, status: status.status, stage: status.stage || 'Scanning...' } : null);
+            if (status.status === 'COMPLETED' || status.status === 'FAILED') {
+              clearInterval(poll);
+              setTimeout(() => { setLiveScan(null); setRunningId(''); }, 5000);
+              load();
+            }
+          }
+        } catch {}
+      }, 2000);
+    } catch (e: any) { setRunningId(''); }
+  };
+
   const test = async (type: string, target: string) => {
     try {
       const r = await api.testSchedule(type, target);
-      if (r?.scan_id) {
-        setLiveScan({ id: r.scan_id, type, target, progress: 0, status: 'RUNNING', stage: 'Starting...' });
-        // Poll for progress
-        const poll = setInterval(async () => {
-          try {
-            let status: any;
-            const authHeader = { 'Authorization': 'Bearer ' + localStorage.getItem('mc_token') };
-            if (type === 'web') {
-              status = await fetch('/api/web-scan/status/' + r.scan_id, { headers: authHeader }).then(r => r.json());
-            } else if (type === 'email') {
-              status = await fetch('/api/email-scan/status/' + r.scan_id, { headers: authHeader }).then(r => r.json());
-            } else if (type === 'threat') {
-              status = await fetch('/api/threat-intel/nmap-status/' + r.scan_id, { headers: authHeader }).then(r => r.json());
-              if (status) {
-                status.status = status.status || (status.progress >= 100 ? 'COMPLETED' : 'RUNNING');
-                status.stage = status.stage || status.current_phase || 'Scanning ports...';
-              }
+      const authHeader = { 'Authorization': 'Bearer ' + localStorage.getItem('mc_token') };
+
+      // For threat scans, use first job_id from jobs array
+      const scanId = r?.scan_id || r?.jobs?.[0]?.job_id;
+      if (!scanId) { setTestMsg(''); return; }
+
+      setLiveScan({ id: scanId, type, target, progress: 0, status: 'RUNNING', stage: 'Starting...' });
+
+      const poll = setInterval(async () => {
+        try {
+          let status: any;
+          if (type === 'web') {
+            status = await fetch('/api/web-scan/status/' + scanId, { headers: authHeader }).then(r => r.json());
+          } else if (type === 'email') {
+            status = await fetch('/api/email-scan/status/' + scanId, { headers: authHeader }).then(r => r.json());
+          } else if (type === 'threat') {
+            // Poll all jobs and aggregate progress
+            const jobs = r?.jobs || [{ job_id: scanId }];
+            const statuses = await Promise.all(
+              jobs.map((j: any) => fetch('/api/threat-intel/nmap-status/' + j.job_id, { headers: authHeader }).then(r => r.json()).catch(() => null))
+            );
+            const valid = statuses.filter(Boolean);
+            const avgProgress = valid.reduce((a: number, s: any) => a + (s.progress || 0), 0) / (valid.length || 1);
+            const allDone = valid.every((s: any) => s.status === 'completed' || s.status === 'failed');
+            status = { progress: Math.round(avgProgress), status: allDone ? 'COMPLETED' : 'RUNNING', stage: valid[0]?.stage || 'Scanning ports...' };
+          }
+          if (status) {
+            setLiveScan((prev: any) => prev ? { ...prev, progress: status.progress || 0, status: status.status, stage: status.stage || 'Scanning...' } : null);
+            if (status.status === 'COMPLETED' || status.status === 'FAILED') {
+              clearInterval(poll);
+              setTimeout(() => setLiveScan(null), 5000);
+              load();
             }
-            if (status) {
-              setLiveScan((prev: any) => prev ? { ...prev, progress: status.progress || 0, status: status.status, stage: status.stage || status.currentStage || 'Scanning...' } : null);
-              if (status.status === 'COMPLETED' || status.status === 'FAILED') {
-                clearInterval(poll);
-                setTimeout(() => setLiveScan(null), 8000);
-                load(); // refresh schedules
-              }
-            }
-          } catch {}
-        }, 2000);
-      }
+          }
+        } catch {}
+      }, 2000);
+
       setTestMsg('');
     } catch (e: any) {
       setTestMsg('Failed: ' + (e.message || 'unknown error'));
@@ -304,7 +347,7 @@ export default function Schedules() {
                       <button onClick={() => toggle(s._type, s.id, s.isActive ?? s.is_active ?? true)} className="p-1.5 rounded hover:bg-mc-bg2 text-mc-txt3 hover:text-mc-brand transition" title={(s.isActive ?? s.is_active) ? 'Pause' : 'Resume'}>
                         {(s.isActive ?? s.is_active) ? <Pause size={13} /> : <Play size={13} />}
                       </button>
-                      <button onClick={() => { test(s._type, s.url || s.domain || s.target); setRunningId(s.id); setTimeout(() => setRunningId(''), 3000); }} className={'p-1.5 rounded hover:bg-mc-bg2 transition ' + (runningId === s.id ? 'text-emerald-400 animate-pulse' : 'text-mc-txt3 hover:text-emerald-400')} title="Run Now"><Zap size={13} /></button>
+                      <button onClick={() => { testById(s._type, s.id, s.url || s.domain || s.target); setRunningId(s.id); }} className={'p-1.5 rounded hover:bg-mc-bg2 transition ' + (runningId === s.id ? 'text-emerald-400 animate-pulse' : 'text-mc-txt3 hover:text-emerald-400')} title="Run Now"><Zap size={13} /></button>
                       <button onClick={() => del(s._type, s.id)} className="p-1.5 rounded hover:bg-mc-bg2 text-mc-txt3 hover:text-mc-rose transition" title="Delete"><Trash2 size={13} /></button>
                     </div>
                   </Card>

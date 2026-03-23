@@ -402,7 +402,8 @@ export class NmapService {
                 + "<div style=\"color:#8899b4;font-size:12px;\">Open Ports Found</div></div>"
                 + "<table style=\"width:100%;background:#111827;border-radius:10px;margin-bottom:15px;\"><tr><th style=\"padding:8px 12px;text-align:left;color:#3b82f6;font-size:11px;border-bottom:1px solid #1a2640;\">PORT / SERVICE</th></tr>" + portsHtml + "</table>"
                 + "</div></div>";
-              await emailSvc.send(sched.notifyEmails.filter(Boolean), "[M-Challenge] Port Scan: " + job.target + " (" + ports.length + " open)", html);
+              const displayName = sched.description ? sched.description + " — " + job.target : job.target;
+              await emailSvc.send(sched.notifyEmails.filter(Boolean), "[M-Challenge] Port Scan: " + displayName + " (" + ports.length + " open)", html);
               console.log("[NmapService] Notification sent to:", sched.notifyEmails);
             }
           }

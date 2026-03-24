@@ -13,6 +13,8 @@ import HelpCenterPage from './pages/HelpCenter';
 import TlsScanPage from './pages/TlsScan';
 import LoginPage from './pages/Login';
 import CustomersPage from './pages/Clients';
+import NucleiPage from './pages/Nuclei';
+import PenTestPage from './pages/PenTest';
 
 export default function App() {
   return (
@@ -31,6 +33,8 @@ export default function App() {
           <Route path="/tls" element={<TlsScanPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/customers" element={<CustomersPage />} />
+          <Route path="/nuclei" element={<NucleiPage />} />
+          <Route path="/pentest" element={<PenTestPage />} />
         </Routes>
       </Layout>
     </AuthProvider>

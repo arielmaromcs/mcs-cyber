@@ -192,6 +192,7 @@ enum ScanStatus {
 // ============================================================
 
 model WebScanSchedule {
+  customerId  String?  @map("customer_id")
   id                String    @id @default(uuid())
   userId            String    @map("user_id")
   url               String
@@ -219,6 +220,7 @@ model WebScanSchedule {
 }
 
 model EmailScanSchedule {
+  customerId  String?  @map("customer_id")
   id                String    @id @default(uuid())
   userId            String    @map("user_id")
   domain            String
@@ -243,6 +245,7 @@ model EmailScanSchedule {
 }
 
 model ThreatIntelSchedule {
+  customerId  String?  @map("customer_id")
   id                     String    @id @default(uuid())
   userId                 String    @map("user_id")
   target                 String

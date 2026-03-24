@@ -32,6 +32,7 @@ export class ScheduleService {
           notifyOnComplete: data.notify_on_complete ?? true,
           notifyOnCritical: data.notify_on_critical ?? true,
           customMessage: data.custom_message,
+          customerId: data.customer_id || null,
           isActive: true,
         },
       });
@@ -50,6 +51,7 @@ export class ScheduleService {
           startTime: data.start_time || '09:00',
           notifyOnComplete: data.notify_on_complete ?? true,
           notifyOnCritical: data.notify_on_critical ?? true,
+          customerId: data.customer_id || null,
           isActive: true,
         },
       });
@@ -70,6 +72,7 @@ export class ScheduleService {
           notifyOnCritical: data.notify_on_critical ?? true,
           isActive: true,
           nmapConfig: data.nmap_config || null,
+          customerId: data.customer_id || null,
         },
       });
       registerScheduleCron('threat', sched.id, data.start_time || '09:00', freq);

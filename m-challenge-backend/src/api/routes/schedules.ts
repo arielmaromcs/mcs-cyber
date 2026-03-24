@@ -14,6 +14,7 @@ const createSchema = z.object({
     notify_on_complete: z.boolean().default(true),
     notify_on_critical: z.boolean().default(true),
     custom_message: z.string().optional(),
+    customer_id: z.string().optional(),
     nmap_config: z.any().optional(),
   }),
 });

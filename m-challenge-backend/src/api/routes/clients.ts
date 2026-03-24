@@ -42,4 +42,16 @@ export async function clientRoutes(app: FastifyInstance) {
     await (prisma as any).$executeRaw`DELETE FROM clients WHERE id = ${id}`;
     return { success: true };
   });
+
+  // GET /clients/:id/schedules — כל הסריקות המשויכות ללקוח
+  app.get('/:id/schedules', { preHandler: [(app as any).authenticate] }, async (request) => {
+    const { id } = request.params as any;
+    const [web, email, threat] = await Promise.all([
+      (prisma as any).$queryRaw`SELECT *, 'web' as _type FROM web_scan_schedules WHERE customer_id = ${id} ORDER BY created_at DESC`,
+      (prisma as any).$queryRaw`SELECT *, 'email' as _type FROM email_scan_schedules WHERE customer_id = ${id} ORDER BY created_at DESC`,
+      (prisma as any).$queryRaw`SELECT *, 'threat' as _type FROM threat_intel_schedules WHERE customer_id = ${id} ORDER BY created_at DESC`,
+    ]);
+    return [...(web as any[]), ...(email as any[]), ...(threat as any[])];
+  });
+
 }

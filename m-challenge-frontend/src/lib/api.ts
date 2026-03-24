@@ -91,5 +91,6 @@ export const api = {
   getClientIp: () => request<any>('GET', '/threat-intel/client-ip'),
   upgrade: () => request<any>('POST', '/data/upgrade'),
   startFullScan: (data: any) => request<any>('POST', '/full-scan/run-now', data),
+  getClientSchedules: (id: string) => request<any>('GET', '/clients/' + id + '/schedules'),
   createFullScanSchedule: (data: any) => request<any>('POST', '/full-scan/start', data),
 };

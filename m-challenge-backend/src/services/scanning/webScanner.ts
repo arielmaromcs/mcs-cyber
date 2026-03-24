@@ -177,10 +177,16 @@ export class WebScannerService {
             const emailSvc = new EmailService();
             const topFindings = this.allFindings.slice(0, 15).map((f: any) => ({ severity: f.severity, title: f.title, description: (f.description || '').slice(0, 120) }));
             const recs = this.allFindings.filter((f: any) => f.severity === 'critical' || f.severity === 'high').slice(0, 5).map((f: any) => 'Fix: ' + f.title);
+            let clientName = '';
+            if ((sched as any).customerId) {
+              const client = await (prisma as any).$queryRaw`SELECT name FROM clients WHERE id = ${(sched as any).customerId} LIMIT 1`;
+              clientName = (client as any[])[0]?.name || '';
+            }
+            const descWithClient = clientName ? (sched.description ? clientName + ' — ' + sched.description : clientName) : (sched.description || undefined);
             await emailSvc.sendScanNotification(
               sched.notifyEmails.filter(Boolean),
               domain, 'Web Security', riskScore, undefined,
-              { findings: topFindings, recommendations: recs, rating: riskScore >= 80 ? 'Good' : riskScore >= 50 ? 'Fair' : 'Needs Improvement', description: sched.description || undefined }
+              { findings: topFindings, recommendations: recs, rating: riskScore >= 80 ? 'Good' : riskScore >= 50 ? 'Fair' : 'Needs Improvement', description: descWithClient }
             );
             console.log('[WebScanner] Notification sent to:', sched.notifyEmails);
           }

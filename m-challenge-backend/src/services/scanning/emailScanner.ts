@@ -151,10 +151,16 @@ export class EmailScannerService {
           for (const sched of schedules) {
             if (sched.notifyEmails?.length > 0) {
               const emailSvc = new EmailService();
+              let clientName = '';
+              if ((sched as any).customerId) {
+                const client = await (prisma as any).$queryRaw`SELECT name FROM clients WHERE id = ${(sched as any).customerId} LIMIT 1`;
+                clientName = (client as any[])[0]?.name || '';
+              }
+              const descWithClient = clientName ? (sched.description ? clientName + ' — ' + sched.description : clientName) : (sched.description || undefined);
               await emailSvc.sendScanNotification(
                 sched.notifyEmails.filter(Boolean),
                 domain, 'Email Security', totalScore, undefined,
-                { findings, recommendations, scoreBreakdown: { spf: Math.min(18, spfScore), dkim: Math.min(18, dkimScore), dmarc: Math.min(22, dmarcScore), relay: Math.min(18, relayScore), misc: Math.min(12, miscScore), ports: Math.min(12, portsScore) }, rating, description: sched.description || undefined }
+                { findings, recommendations, scoreBreakdown: { spf: Math.min(18, spfScore), dkim: Math.min(18, dkimScore), dmarc: Math.min(22, dmarcScore), relay: Math.min(18, relayScore), misc: Math.min(12, miscScore), ports: Math.min(12, portsScore) }, rating, description: descWithClient }
               );
               console.log('[EmailScanner] Notification sent to:', sched.notifyEmails);
             }

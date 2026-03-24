@@ -24,7 +24,7 @@ export class NucleiService {
 
   private async runScan(scanId: string, target: string, severity: string): Promise<void> {
     try {
-      const { stdout } = await execFileAsync('docker', [
+      const { stdout } = await execFileAsync('/usr/bin/docker', [
         'exec', 'mcs-challenge-nuclei-1',
         'nuclei', '-u', target,
         '-severity', severity,

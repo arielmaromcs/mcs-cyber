@@ -15,6 +15,8 @@ const NAV_ITEMS = [
   { to: '/schedules', icon: Calendar, label: 'Scheduled Scans', requiresAuth: 'any' },
   { to: '/tls', icon: Lock, label: 'TLS Scanner', requiresAuth: 'any' },
   { to: '/customers', icon: Users, label: 'Customers', requiresAuth: 'admin' },
+  { to: '/nuclei', icon: Zap, label: 'Nuclei Scanner', requiresAuth: '' },
+  { to: '/pentest', icon: ShieldAlert, label: 'PenTest Reports', requiresAuth: '' },
   { to: '/help', icon: HelpCircle, label: 'Help Center', requiresAuth: '' },
 ];
 

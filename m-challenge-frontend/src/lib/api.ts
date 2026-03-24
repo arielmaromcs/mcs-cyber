@@ -98,5 +98,12 @@ export const api = {
   nucleiScans: () => request<any>('GET', '/nuclei/scans'),
   nucleiGetScan: (id: string) => request<any>('GET', '/nuclei/scan/' + id),
   nucleiDeleteScan: (id: string) => request<any>('DELETE', '/nuclei/scan/' + id),
+
+  // PenTest
+  pentestScan: (data: any) => request<any>('POST', '/pentest/scan', data),
+  pentestReports: () => request<any>('GET', '/pentest/reports'),
+  pentestGetReport: (id: string) => request<any>('GET', '/pentest/report/' + id),
+  pentestDeleteReport: (id: string) => request<any>('DELETE', '/pentest/report/' + id),
+  pentestHtmlUrl: (id: string) => '/api/pentest/report/' + id + '/html',
   createFullScanSchedule: (data: any) => request<any>('POST', '/full-scan/start', data),
 };

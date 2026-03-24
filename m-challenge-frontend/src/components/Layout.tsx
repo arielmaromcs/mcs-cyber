@@ -1,7 +1,7 @@
 import ClientIpBadge from "./ClientIpBadge";
 import { ReactNode, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Shield, Globe, Mail, Crosshair, Target, Calendar, Settings, Info, LogOut, Languages, ChevronDown, PanelLeftClose, PanelLeft, HelpCircle, Lock, Users, Zap } from 'lucide-react';
+import { Shield, Globe, Mail, Crosshair, Target, Calendar, Settings, Info, LogOut, Languages, ChevronDown, PanelLeftClose, PanelLeft, HelpCircle, Lock, Users, Zap, ShieldAlert } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useLang } from '../hooks/useLang';
 

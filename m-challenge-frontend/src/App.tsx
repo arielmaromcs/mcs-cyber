@@ -12,6 +12,7 @@ import AboutPage from './pages/About';
 import HelpCenterPage from './pages/HelpCenter';
 import TlsScanPage from './pages/TlsScan';
 import LoginPage from './pages/Login';
+import CustomersPage from './pages/Clients';
 
 export default function App() {
   return (
@@ -29,6 +30,7 @@ export default function App() {
           <Route path="/help" element={<HelpCenterPage />} />
           <Route path="/tls" element={<TlsScanPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/customers" element={<CustomersPage />} />
         </Routes>
       </Layout>
     </AuthProvider>

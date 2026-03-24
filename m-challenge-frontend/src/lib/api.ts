@@ -90,4 +90,6 @@ export const api = {
   emailScanHistory: () => request<any>('GET', '/email-scan/history'),
   getClientIp: () => request<any>('GET', '/threat-intel/client-ip'),
   upgrade: () => request<any>('POST', '/data/upgrade'),
+  startFullScan: (data: any) => request<any>('POST', '/full-scan/run-now', data),
+  createFullScanSchedule: (data: any) => request<any>('POST', '/full-scan/start', data),
 };

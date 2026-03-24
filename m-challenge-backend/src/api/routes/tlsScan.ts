@@ -85,8 +85,8 @@ export async function tlsScanRoutes(app: FastifyInstance) {
 
     try {
       const { stdout } = await execAsync(
-        `sslscan --no-colour ${host}:443 2>/dev/null`,
-        { timeout: 60000 }
+        `sslscan --no-colour ${host}:443`,
+        { timeout: 60000, shell: '/bin/sh' }
       );
 
       const parsed = parseSslscan(stdout, host);

@@ -15,6 +15,7 @@ import { adminRoutes } from './api/routes/admin';
 import { scanDataRoutes } from './api/routes/scanData';
 import { tlsScanRoutes } from './api/routes/tlsScan';
 import { clientRoutes } from './api/routes/clients';
+import { fullScanRoutes } from './api/routes/fullScan';
 import { initScheduler } from './jobs/scheduler';
 
 const app = Fastify({
@@ -65,6 +66,7 @@ app.get('/api/health', async () => ({ status: 'ok', timestamp: new Date().toISOS
 app.register(authRoutes, { prefix: '/api/auth' });
 app.register(tlsScanRoutes, { prefix: '/api/tls-scan' });
 app.register(clientRoutes, { prefix: '/api/clients' });
+app.register(fullScanRoutes, { prefix: '/api/full-scan' });
 app.register(webScanRoutes, { prefix: '/api/web-scan' });
 app.register(emailScanRoutes, { prefix: '/api/email-scan' });
 app.register(threatIntelRoutes, { prefix: '/api/threat-intel' });

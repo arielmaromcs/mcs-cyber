@@ -128,10 +128,7 @@ export class ScheduleService {
       const nmap = new NmapService();
       (nmap as any)._fromSchedule = fromSchedule;
       (nmap as any)._scheduleId = (this as any)._currentScheduleId;
-      const result = await nmap.startThreatIntelNmap(target, nmapConfig || {
-        scan_a_records: true, scan_mx_records: true, scan_txt_records: false,
-        profile: 'baseline_syn_1000',
-      });
+      const result = await nmap.startThreatIntelNmap(target, { ...(nmapConfig || {}), scan_a_records: true, scan_mx_records: true, client_approved: true, profile: (nmapConfig as any)?.profile || 'baseline_syn_1000' });
       const jobId = result.jobs?.[0]?.scan_id || result.jobs?.[0]?.job_id || null;
       return { scan_id: jobId, status: jobId ? 'started' : 'no_targets', jobs: result.jobs, discovery: result.discovery?.steps };
     }

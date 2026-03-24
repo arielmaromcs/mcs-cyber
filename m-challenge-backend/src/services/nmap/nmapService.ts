@@ -52,7 +52,7 @@ function truncate(s: string, max = 200000): string {
 /**
  * Execute nmap binary. Returns stdout, stderr, return code, elapsed.
  */
-function runNmap(args: string[], timeout = 180000): Promise<{ rc: number; stdout: string; stderr: string; elapsed: number }> {
+function runNmap(args: string[], timeout = 600000): Promise<{ rc: number; stdout: string; stderr: string; elapsed: number }> {
   const t0 = Date.now();
   return new Promise((resolve) => {
     execFile('/usr/bin/nmap', args, { timeout, maxBuffer: 10 * 1024 * 1024 }, (err, stdout, stderr) => {
@@ -93,7 +93,7 @@ function buildCmd(target: string, ports: string | null, profile: string): string
 
     case 'vuln':
     case 'full':
-      cmd.push('-sT', '-sV', '--script', 'vuln,version,default,safe', '--script-timeout', '30s');
+      cmd.push('-sT', '-sV', '--script', 'vuln,version,safe', '--script-timeout', '8s');
       break;
 
     case 'baseline_syn_1000':
@@ -464,10 +464,10 @@ export class NmapService {
       const args = [
         '-Pn', '-n', '-sT',
         '-sV', '--version-intensity', '4',
-        '--script', 'vuln,version,default,safe',
-        '--script-timeout', '15s',
+        '--script', 'vuln,version,safe',
+        '--script-timeout', '8s',
         '--max-retries', '1',
-        '--host-timeout', '75s',
+        '--host-timeout', '120s',
         '-T4',
         '-p', portList,
         jobResult.ip,
@@ -519,14 +519,14 @@ export class NmapService {
     const { open_ports, services } = await parseOpenPortsXml(s1.stdout);
 
     // Stage 2: Targeted NSE on discovered ports
-    const scriptExpr = 'vuln,version,default,safe';
+    const scriptExpr = 'vuln,version,safe';
     const args2 = [
       '-Pn', '-n', '-sT',
       '-sV', '--version-intensity', '4',
       '--script', scriptExpr,
-      '--script-timeout', '15s',
+      '--script-timeout', '8s',
       '--max-retries', '1',
-      '--host-timeout', '75s',
+      '--host-timeout', '120s',
       '-T4',
     ];
     if (open_ports.length) { args2.push('-p', open_ports.join(',')); }

@@ -151,6 +151,7 @@ const t_map: Record<string, Record<Lang, string>> = {
   'Password': { en: 'Password', he: 'סיסמה' },
   'Full Name': { en: 'Full Name', he: 'שם מלא' },
   'Help Center': { en: 'Help Center', he: 'מרכז עזרה' },
+  'Customers': { en: 'Customers', he: 'לקוחות' },
   'help_subtitle': { en: 'Learn how to use each module effectively', he: 'למד כיצד להשתמש בכל מודול ביעילות' },
   'help_what': { en: 'What it does', he: 'מה זה עושה' },
   'help_how': { en: 'How to use', he: 'איך להשתמש' },

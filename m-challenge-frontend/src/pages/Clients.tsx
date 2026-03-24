@@ -6,9 +6,9 @@ import { useAuth } from '../hooks/useAuth';
 
 const emptyForm = { name: '', domain: '', ip: '', office: '', contactName: '', contactPhone: '', contactEmail: '', serviceAgreement: false, notes: '' };
 
-export default function Clients() {
+export default function Customers() {
   const { user } = useAuth();
-  const [clients, setClients] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
@@ -18,7 +18,7 @@ export default function Clients() {
 
   const load = async () => {
     setLoading(true);
-    try { setClients(await (api as any).getClients() || []); } catch {}
+    try { setCustomers(await (api as any).getClients() || []); } catch {}
     setLoading(false);
   };
 
@@ -46,7 +46,7 @@ export default function Clients() {
     try { await (api as any).deleteClient(id); load(); } catch {}
   };
 
-  const filtered = clients.filter(c => !search || c.name?.toLowerCase().includes(search.toLowerCase()) || c.domain?.includes(search) || c.contact_name?.toLowerCase().includes(search.toLowerCase()));
+  const filtered = customers.filter(c => !search || c.name?.toLowerCase().includes(search.toLowerCase()) || c.domain?.includes(search) || c.contact_name?.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div>
@@ -54,7 +54,7 @@ export default function Clients() {
         <div className="max-w-[1000px] mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center"><Users size={20} className="text-white" /></div>
-            <div><h1 className="text-2xl font-bold text-white">Clients</h1><p className="text-sm text-blue-100/60">Manage your clients and service agreements</p></div>
+            <div><h1 className="text-2xl font-bold text-white">Customers</h1><p className="text-sm text-blue-100/60">Manage your customers and service agreements</p></div>
           </div>
           <Button onClick={openAdd}><Plus size={14} /> Add Client</Button>
         </div>
@@ -63,13 +63,13 @@ export default function Clients() {
       <div className="max-w-[1000px] mx-auto px-4 py-6">
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3 mb-5">
-          <Card className="p-4 text-center"><div className="text-2xl font-bold text-mc-brand font-mono">{clients.length}</div><div className="text-[10px] text-mc-txt3">Total Clients</div></Card>
-          <Card className="p-4 text-center"><div className="text-2xl font-bold text-emerald-400 font-mono">{clients.filter(c => c.service_agreement).length}</div><div className="text-[10px] text-mc-txt3">With Agreement</div></Card>
-          <Card className="p-4 text-center"><div className="text-2xl font-bold text-amber-400 font-mono">{clients.filter(c => !c.service_agreement).length}</div><div className="text-[10px] text-mc-txt3">No Agreement</div></Card>
+          <Card className="p-4 text-center"><div className="text-2xl font-bold text-mc-brand font-mono">{customers.length}</div><div className="text-[10px] text-mc-txt3">Total Customers</div></Card>
+          <Card className="p-4 text-center"><div className="text-2xl font-bold text-emerald-400 font-mono">{customers.filter(c => c.service_agreement).length}</div><div className="text-[10px] text-mc-txt3">With Agreement</div></Card>
+          <Card className="p-4 text-center"><div className="text-2xl font-bold text-amber-400 font-mono">{customers.filter(c => !c.service_agreement).length}</div><div className="text-[10px] text-mc-txt3">No Agreement</div></Card>
         </div>
 
         {/* Search */}
-        <Input placeholder="Search clients..." value={search} onChange={(e: any) => setSearch(e.target.value)} className="mb-4" />
+        <Input placeholder="Search customers..." value={search} onChange={(e: any) => setSearch(e.target.value)} className="mb-4" />
 
         {/* Form Modal */}
         {showForm && (
@@ -119,7 +119,7 @@ export default function Clients() {
             {filtered.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16">
                 <Users size={40} className="text-white/20 mb-4" />
-                <div className="text-lg font-semibold text-white mb-2">No clients yet</div>
+                <div className="text-lg font-semibold text-white mb-2">No customers yet</div>
                 <div className="text-sm text-white/50">Click "Add Client" to get started</div>
               </div>
             ) : filtered.map((c: any) => (

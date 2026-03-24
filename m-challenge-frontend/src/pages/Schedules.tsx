@@ -1,6 +1,6 @@
 import { useLang } from '../hooks/useLang';
 import { useState, useEffect } from 'react';
-import { Calendar, Plus, Play, Pause, Trash2, TestTube, Clock, Mail, Globe, Crosshair, X, Pencil, Zap } from 'lucide-react';
+import { Calendar, Plus, Play, Pause, Trash2, TestTube, Clock, Mail, Globe, Crosshair, X, Pencil, Zap, Loader2 } from 'lucide-react';
 import { api } from '../lib/api';
 import { Card, Badge, Button, Tabs, Input, EmptyState, Spinner } from '../components/ui';
 
@@ -29,6 +29,7 @@ export default function Schedules() {
   const [cProfile, setCProfile] = useState('baseline_syn_1000');
   const [cIncludeCve, setCIncludeCve] = useState(false);
   const [cEmailResults, setCEmailResults] = useState(true);
+  const [cIp, setCIp] = useState('');
 
   const load = async () => {
     setLoading(true);
@@ -69,10 +70,14 @@ export default function Schedules() {
           email_results_only: cEmailResults && !cIncludeCve,
         };
       }
-      await api.createSchedule(cType, schedData);
+      if (cType === 'full') {
+        await (api as any).createFullScanSchedule({ target: cTarget, ip: cIp || undefined, notifyEmails: cEmails.split(',').map((e: string) => e.trim()).filter(Boolean), frequency: cFreq, startTime: cTime, description: cDescription || undefined });
+      } else {
+        await api.createSchedule(cType, schedData);
+      }
       setShowCreate(false); setCTarget(''); setCEmails(''); setCDescription('');
       load();
-    } catch {}
+    } catch(e: any) { console.error('Schedule create error:', e); alert('Error: ' + (e.message || 'Failed')); }
     setCreating(false);
   };
 
@@ -92,10 +97,14 @@ export default function Schedules() {
     try {
       const r = await (api as any).runScheduleNow(type, scheduleId);
       const authHeader = { 'Authorization': 'Bearer ' + localStorage.getItem('mc_token') };
-      const scanId = r?.scan_id || r?.jobs?.[0]?.job_id;
-      if (!scanId) return;
-      setLiveScan({ id: scanId, type, target, progress: 0, status: 'RUNNING', stage: 'Starting...' });
-      const jobs = r?.jobs || [{ job_id: scanId }];
+      const jobs = Array.isArray(r?.jobs) ? r.jobs.filter((j: any) => j?.job_id) : [];
+      const scanId = r?.scan_id || jobs[0]?.job_id;
+      if (!scanId && !jobs.length) {
+        setLiveScan({ id: 'manual', type, target, progress: 100, status: 'COMPLETED', stage: 'Scan triggered successfully' });
+        setTimeout(() => { setLiveScan(null); setRunningId(''); load(); }, 4000);
+        return;
+      }
+      setLiveScan({ id: scanId || 'running', type, target, progress: 0, status: 'RUNNING', stage: 'Starting...' });
       const poll = setInterval(async () => {
         try {
           let status: any;
@@ -200,14 +209,14 @@ export default function Schedules() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
               <div>
                 <label className="text-[10px] text-mc-txt3 mb-1 block">Type</label>
-                <select value={cType} onChange={e => setCType(e.target.value)} className="w-full bg-mc-bg2 border border-mc-cardBorder rounded-lg px-2 py-1.5 text-xs text-mc-txt outline-none">
-                  <option value="web">{t("Web")}</option><option value="email">{t("Email")}</option><option value="threat">{t("Port Exposure Scan")}</option>
+                <select value={cType} onChange={e => setCType(e.target.value)} className="w-full bg-mc-bg2 border border-mc-cardBorder rounded-lg px-2 py-2 text-sm text-mc-txt outline-none font-medium">
+                  <option value="web">{t("Web")}</option><option value="email">{t("Email")}</option><option value="threat">{t("Port Exposure Scan")}</option><option value="full">🛡 Full Scan (All)</option>
                 </select>
               </div>
-              <Input label="Target" value={cTarget} onChange={(e: any) => setCTarget(e.target.value)} placeholder={cType === 'web' ? 'https://...' : 'domain.com'} />
+              <Input label={cType === 'full' ? 'Domain' : 'Target'} value={cTarget} onChange={(e: any) => setCTarget(e.target.value)} placeholder={cType === 'web' ? 'https://...' : cType === 'full' ? 'example.com' : 'domain.com'} />
               <div>
                 <label className="text-[10px] text-mc-txt3 mb-1 block">{t("Frequency")}</label>
-                <select value={cFreq} onChange={e => setCFreq(e.target.value)} className="w-full bg-mc-bg2 border border-mc-cardBorder rounded-lg px-2 py-1.5 text-xs text-mc-txt outline-none">
+                <select value={cFreq} onChange={e => setCFreq(e.target.value)} className="w-full bg-mc-bg2 border border-mc-cardBorder rounded-lg px-2 py-2 text-sm text-mc-txt outline-none font-medium">
                   <option value="daily">{t("Daily")}</option><option value="weekly">{t("Weekly")}</option><option value="monthly">{t("Monthly")}</option>
                 </select>
               </div>
@@ -215,6 +224,18 @@ export default function Schedules() {
             </div>
             <Input label="Notify Emails (comma-separated, max 5)" value={cEmails} onChange={(e: any) => setCEmails(e.target.value)} placeholder="user@example.com" />
             <Input label="Description (optional)" value={cDescription} onChange={(e: any) => setCDescription(e.target.value)} placeholder="e.g. Production server, Client XYZ" className="mt-3" />
+            {cType === 'full' && (
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                <Input label="IP Address (optional)" value={cIp} onChange={(e: any) => setCIp(e.target.value)} placeholder="1.2.3.4" />
+                <div />
+              </div>
+            )}
+            {cType === 'full' && (
+              <div className="mt-3 p-3 rounded-xl border border-blue-500/20 bg-blue-500/5">
+                <div className="text-[10px] text-blue-400 font-semibold mb-2">🛡 Full Scan includes: Email Security + Port Scan + TLS/SSL</div>
+                <div className="text-[10px] text-mc-txt3">Results will be sent to the notify emails above</div>
+              </div>
+            )}
             {/* Threat Intel Advanced Options */}
             {cType === 'threat' && (
               <div className="mt-4 space-y-4">
@@ -242,7 +263,12 @@ export default function Schedules() {
                       { id: 'service_discovery', label: 'Service Discovery', desc: 'Service + version + OS detection', time: '~2-5 min', num: 2 },
                       { id: 'security_posture', label: 'Security Posture', desc: 'Deep scan + NSE scripts + CVE mapping', time: '~5-15 min', num: 3 }]
                       .map(p => (
-                        <button key={p.id} onClick={() => setCProfile(p.id)}
+                        <button key={p.id} onClick={() => {
+                          setCProfile(p.id);
+                          if (p.id === 'security_posture') { setCIncludeCve(true); setCEmailResults(false); }
+                          if (p.id === 'baseline_syn_1000') { setCIncludeCve(false); }
+                          if (p.id === 'service_discovery') { setCEmailResults(false); }
+                        }}
                           className={'p-3 rounded-xl border text-left transition ' + (cProfile === p.id ? 'border-blue-500/50 bg-blue-500/10' : 'border-white/10 bg-white/[0.02] hover:border-white/20')}>
                           <div className="flex items-center gap-2 mb-1">
                             <div className={'w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ' + (cProfile === p.id ? 'bg-blue-500 text-white' : 'bg-white/10 text-white/40')}>{p.num}</div>
@@ -259,13 +285,15 @@ export default function Schedules() {
                 <div>
                   <div className="text-xs font-semibold text-white mb-2">Output Options</div>
                   <div className="flex gap-3">
-                    <label className={'flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition ' + (cIncludeCve ? 'border-rose-500/30 bg-rose-500/10' : 'border-white/10 bg-white/[0.02]')}>
-                      <input type="checkbox" checked={cIncludeCve} onChange={e => setCIncludeCve(e.target.checked)} className="w-3.5 h-3.5 rounded" />
+                    <label className={'flex items-center gap-2 px-3 py-2 rounded-lg border transition ' + (cProfile === 'baseline_syn_1000' ? 'opacity-40 cursor-not-allowed border-white/10' : 'cursor-pointer ' + (cIncludeCve ? 'border-rose-500/30 bg-rose-500/10' : 'border-white/10 bg-white/[0.02]'))}>
+                      <input type="checkbox" checked={cIncludeCve} disabled={cProfile === 'baseline_syn_1000'} onChange={e => setCIncludeCve(e.target.checked)} className="w-3.5 h-3.5 rounded" />
                       <span className="text-xs text-white">Include CVE + NSE Analysis</span>
+                      {cProfile === 'security_posture' && <span className="text-[9px] text-rose-400 font-semibold">AUTO</span>}
                     </label>
-                    <label className={'flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition ' + (cEmailResults ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-white/10 bg-white/[0.02]')}>
-                      <input type="checkbox" checked={cEmailResults} onChange={e => setCEmailResults(e.target.checked)} className="w-3.5 h-3.5 rounded" />
+                    <label className={'flex items-center gap-2 px-3 py-2 rounded-lg border transition ' + (cIncludeCve ? 'opacity-40 cursor-not-allowed border-white/10' : 'cursor-pointer ' + (cEmailResults ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-white/10 bg-white/[0.02]'))}>
+                      <input type="checkbox" checked={cEmailResults} disabled={cIncludeCve} onChange={e => setCEmailResults(e.target.checked)} className="w-3.5 h-3.5 rounded" />
                       <span className="text-xs text-white">Email ports summary only</span>
+                      {cIncludeCve && <span className="text-[9px] text-white/30">N/A with CVE</span>}
                     </label>
                   </div>
                 </div>
@@ -334,12 +362,14 @@ export default function Schedules() {
               filtered.map((s: any) => {
                 const Icon = TypeIcon(s._type);
                 return (
-                  <Card key={s.id} className="px-4 py-3 flex items-center gap-3">
-                    <Icon size={16} className="text-mc-brand shrink-0" />
+                  <Card key={s.id} className={"px-4 py-3 flex items-center gap-3 transition-all " + (runningId === s.id ? "border-emerald-500/40 bg-emerald-500/5" : "")}>
+                    {runningId === s.id
+                      ? <Loader2 size={16} className="text-emerald-400 shrink-0 animate-spin" />
+                      : <Icon size={16} className="text-mc-brand shrink-0" />}
                     <div className="flex-1 min-w-0">
                       {s.description && <div className="text-xs font-semibold text-white">{s.description}</div>}
                       <div className="text-sm font-medium text-mc-txt2 truncate">{s.url || s.domain || s.target}</div>
-                      <div className="text-[10px] text-mc-txt3">{s.frequency} at {s.startTime || s.start_time || '09:00'} • {s.isActive || s.is_active ? 'Active' : 'Paused'}</div>
+                      <div className="text-[10px] text-mc-txt3">{s.frequency} at {s.startTime || s.start_time || '09:00'} • {runningId === s.id ? <span className="text-emerald-400 font-semibold animate-pulse">Running...</span> : (s.isActive || s.is_active ? 'Active' : 'Paused')}</div>
                     </div>
                     {s.lastScore != null && <span className="text-xs font-mono text-mc-brand">{s.lastScore || s.last_score}</span>}
                     <div className="flex gap-1">
@@ -347,7 +377,15 @@ export default function Schedules() {
                       <button onClick={() => toggle(s._type, s.id, s.isActive ?? s.is_active ?? true)} className="p-1.5 rounded hover:bg-mc-bg2 text-mc-txt3 hover:text-mc-brand transition" title={(s.isActive ?? s.is_active) ? 'Pause' : 'Resume'}>
                         {(s.isActive ?? s.is_active) ? <Pause size={13} /> : <Play size={13} />}
                       </button>
-                      <button onClick={() => { testById(s._type, s.id, s.url || s.domain || s.target); setRunningId(s.id); }} className={'p-1.5 rounded hover:bg-mc-bg2 transition ' + (runningId === s.id ? 'text-emerald-400 animate-pulse' : 'text-mc-txt3 hover:text-emerald-400')} title="Run Now"><Zap size={13} /></button>
+                      <button onClick={() => {
+                          if (s._type === 'full' || (s.nmapConfig as any)?.full_scan) {
+                            (api as any).startFullScan({ target: s.url || s.domain || s.target, notifyEmails: s.notifyEmails || s.notify_emails || [] })
+                              .then(() => { setRunningId(s.id); setTimeout(() => { setRunningId(''); load(); }, 5000); })
+                              .catch((e: any) => alert('Error: ' + e.message));
+                          } else {
+                            testById(s._type, s.id, s.url || s.domain || s.target); setRunningId(s.id);
+                          }
+                        }} className={'p-1.5 rounded hover:bg-mc-bg2 transition ' + (runningId === s.id ? 'text-emerald-400 animate-pulse' : 'text-mc-txt3 hover:text-emerald-400')} title="Run Now"><Zap size={13} /></button>
                       <button onClick={() => del(s._type, s.id)} className="p-1.5 rounded hover:bg-mc-bg2 text-mc-txt3 hover:text-mc-rose transition" title="Delete"><Trash2 size={13} /></button>
                     </div>
                   </Card>

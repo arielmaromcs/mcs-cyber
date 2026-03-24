@@ -31,6 +31,7 @@ model User {
   webScans             WebScan[]
   emailScans           EmailScan[]
   webScanSchedules     WebScanSchedule[]
+  nucleiScans          NucleiScan[]
   emailScanSchedules   EmailScanSchedule[]
   threatIntelSchedules ThreatIntelSchedule[]
   clients              Client[]
@@ -421,4 +422,24 @@ model Client {
   user User @relation(fields: [createdBy], references: [id])
 
   @@map("clients")
+}
+
+model NucleiScan {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  target      String
+  status      String   @default("PENDING")
+  severity    String?
+  findings    Json?
+  summary     Json?
+  startedAt   DateTime? @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  errorMessage String?  @map("error_message")
+  customerId  String?   @map("customer_id")
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@map("nuclei_scans")
 }

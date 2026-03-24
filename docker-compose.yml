@@ -50,6 +50,15 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  nuclei:
+    image: projectdiscovery/nuclei:latest
+    volumes:
+      - nuclei_templates:/root/nuclei-templates
+      - nuclei_output:/output
+    entrypoint: ["tail", "-f", "/dev/null"]
+    restart: unless-stopped
+    networks:
+      - default
   frontend:
     build:
       context: ./m-challenge-frontend
@@ -66,3 +75,5 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  nuclei_templates:
+  nuclei_output:

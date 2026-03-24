@@ -92,5 +92,11 @@ export const api = {
   upgrade: () => request<any>('POST', '/data/upgrade'),
   startFullScan: (data: any) => request<any>('POST', '/full-scan/run-now', data),
   getClientSchedules: (id: string) => request<any>('GET', '/clients/' + id + '/schedules'),
+
+  // Nuclei
+  nucleiScan: (data: any) => request<any>('POST', '/nuclei/scan', data),
+  nucleiScans: () => request<any>('GET', '/nuclei/scans'),
+  nucleiGetScan: (id: string) => request<any>('GET', '/nuclei/scan/' + id),
+  nucleiDeleteScan: (id: string) => request<any>('DELETE', '/nuclei/scan/' + id),
   createFullScanSchedule: (data: any) => request<any>('POST', '/full-scan/start', data),
 };

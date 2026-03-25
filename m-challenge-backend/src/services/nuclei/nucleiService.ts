@@ -27,7 +27,7 @@ export class NucleiService {
       const { exec } = await import('child_process');
       const { promisify } = await import('util');
       const execAsync = promisify(exec);
-      const cmd = `/usr/local/bin/nuclei -u "${target}" -severity ${severity} -json -silent -timeout 10 -rate-limit 50 -bulk-size 25 -concurrency 10 -no-interactsh`;
+      const cmd = `/usr/local/bin/nuclei -u "${target}" -severity ${severity} -jsonl -silent -timeout 10 -rate-limit 50 -bulk-size 25 -concurrency 10 -no-interactsh`;
       const { stdout } = await execAsync(cmd, { timeout: 300000, maxBuffer: 10 * 1024 * 1024, env: { ...process.env, PATH: '/usr/bin:/usr/local/bin:/bin' } });
 
       const findings = this.parseOutput(stdout);

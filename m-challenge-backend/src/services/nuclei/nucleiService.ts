@@ -24,17 +24,11 @@ export class NucleiService {
 
   private async runScan(scanId: string, target: string, severity: string): Promise<void> {
     try {
-      const { stdout } = await execFileAsync('/usr/bin/docker', [
-        'exec', 'mcs-challenge-nuclei-1',
-        'nuclei', '-u', target,
-        '-severity', severity,
-        '-json', '-silent',
-        '-timeout', '10',
-        '-rate-limit', '50',
-        '-bulk-size', '25',
-        '-concurrency', '10',
-        '-no-interactsh',
-      ], { timeout: 300000, maxBuffer: 10 * 1024 * 1024 });
+      const { exec } = await import('child_process');
+      const { promisify } = await import('util');
+      const execAsync = promisify(exec);
+      const cmd = `docker exec mcs-challenge-nuclei-1 nuclei -u "${target}" -severity ${severity} -json -silent -timeout 10 -rate-limit 50 -bulk-size 25 -concurrency 10 -no-interactsh`;
+      const { stdout } = await execAsync(cmd, { timeout: 300000, maxBuffer: 10 * 1024 * 1024, env: { ...process.env, PATH: '/usr/bin:/usr/local/bin:/bin' } });
 
       const findings = this.parseOutput(stdout);
       const summary = this.buildSummary(findings);

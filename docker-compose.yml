@@ -36,6 +36,9 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /usr/bin/docker:/usr/bin/docker
+      - /usr/local/bin/nuclei:/usr/local/bin/nuclei
+      - /root/nuclei-templates:/root/nuclei-templates
+      - /root/.config/nuclei:/root/.config/nuclei
     env_file:
       - ./.env
     environment:

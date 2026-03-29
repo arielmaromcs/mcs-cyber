@@ -18,6 +18,7 @@ import { clientRoutes } from './api/routes/clients';
 import { nucleiRoutes } from './api/routes/nuclei';
 import { pentestRoutes } from './api/routes/pentest';
 import { fullScanRoutes } from './api/routes/fullScan';
+import { cveRoutes } from './api/routes/cve';
 import { initScheduler } from './jobs/scheduler';
 
 const app = Fastify({
@@ -71,6 +72,7 @@ app.register(clientRoutes, { prefix: '/api/clients' });
 app.register(nucleiRoutes, { prefix: '/api/nuclei' });
 app.register(pentestRoutes, { prefix: '/api/pentest' });
 app.register(fullScanRoutes, { prefix: '/api/full-scan' });
+app.register(cveRoutes, { prefix: '/api' });
 app.register(webScanRoutes, { prefix: '/api/web-scan' });
 app.register(emailScanRoutes, { prefix: '/api/email-scan' });
 app.register(threatIntelRoutes, { prefix: '/api/threat-intel' });

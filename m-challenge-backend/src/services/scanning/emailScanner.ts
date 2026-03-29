@@ -38,7 +38,11 @@ export class EmailScannerService {
 
       // ---- Stage 7: SMTP Tests (72%) ----
       const smtp = this.analyzeSmtp(domain, mx);
-      await this.update(scanId, 72, 'BLACKLIST_CHECK', { smtpTests: smtp as any });
+      const rawMx = mx.records?.[0] || '';
+      const mxHost = rawMx.replace(/^\d+\s+/, '').replace(/\.$/, '').trim();
+      const relayTest = await this.testMailRelay(domain, mxHost);
+      const smtpCombined = { ...smtp, ...relayTest };
+      await this.update(scanId, 72, 'BLACKLIST_CHECK', { smtpTests: smtpCombined as any });
 
       // ---- Stage 8: Blacklist Check (82%) ----
       const blacklist = await this.checkBlacklists(dnsRecords.a_records || [], mx);
@@ -59,7 +63,7 @@ export class EmailScannerService {
       if (dmarc.policy === 'reject') dmarcScore = 22;
       else if (dmarc.policy === 'quarantine') dmarcScore = 15;
       else if (dmarc.policy === 'none') dmarcScore = 8;
-      const relayScore = smtp.relay_open ? 0 : 18;
+      const relayScore = relayTest.relay_open ? 0 : 18;
       let miscScore = 0;
       if (mx.exists) miscScore += 4;
       if (whois.status === 'success') miscScore += 4;
@@ -367,6 +371,87 @@ export class EmailScannerService {
       return { relay_open: false, starttls_supported: true, banner: 'Microsoft SMTP', simulated: true };
     }
     return { relay_open: false, starttls_supported: true, banner: 'Unknown', simulated: true, message: 'SMTP checks are simulated based on mail provider' };
+  }
+
+
+  // Real SMTP Open Relay Test
+  async testMailRelay(domain: string, mxHost: string): Promise<{
+    relay_open: boolean; starttls_supported: boolean; banner: string;
+    log: string[]; recommendations: string[];
+  }> {
+    const net = await import('net');
+    const log: string[] = [];
+    let relay_open = false;
+    let starttls_supported = false;
+    let banner = '';
+
+    if (!mxHost) return { relay_open: false, starttls_supported: false, banner: 'No MX host', log: ['No MX host available'], recommendations: [] };
+
+    return new Promise((resolve) => {
+      const timeout = 10000;
+      let resolved = false;
+      const done = (result: any) => { if (!resolved) { resolved = true; resolve(result); } };
+      const buildResult = () => ({
+        relay_open, starttls_supported, banner, log,
+        recommendations: relay_open ? [
+          'סגור מיידית את ה-Open Relay — מאפשר לכל אחד לשלוח מיילים דרך השרת שלך',
+          'הגדר mynetworks ב-Postfix/Sendmail לאפשר רק רשתות מורשות',
+          'הפעל SMTP Authentication חובה לשולחים חיצוניים',
+          'הגדר SPF עם -all כדי למנוע זיוף',
+          'בדוק אם השרת כבר ברשימות blacklist עקב שימוש לרעה',
+        ] : [],
+      });
+      try {
+        const socket = (net as any).createConnection({ host: mxHost, port: 25, timeout });
+        socket.setTimeout(timeout);
+        socket.on('timeout', () => { log.push('TIMEOUT'); socket.destroy(); done(buildResult()); });
+        socket.on('error', (err: any) => { log.push('ERROR: ' + err.message); done(buildResult()); });
+        let step = 0; let buffer = '';
+        socket.on('data', (data: Buffer) => {
+          buffer += data.toString();
+          const lines = buffer.split('\r\n'); buffer = lines.pop() || '';
+          for (const line of lines) {
+            if (!line) continue;
+            log.push('S: ' + line);
+            if (step === 0 && line.startsWith('220')) {
+              banner = line.substring(4);
+              socket.write('EHLO mail-relay-test.m-challenge.com\r\n');
+              log.push('C: EHLO mail-relay-test.m-challenge.com');
+              step = 1;
+            } else if (step === 1) {
+              if (line.includes('STARTTLS')) starttls_supported = true;
+              if (line.startsWith('250 ') || (line.startsWith('250') && !line.startsWith('250-'))) {
+                socket.write('MAIL FROM:<relay-test@m-challenge.com>\r\n');
+                log.push('C: MAIL FROM:<relay-test@m-challenge.com>');
+                step = 2;
+              }
+            } else if (step === 2) {
+              if (line.startsWith('250')) {
+                socket.write('RCPT TO:<test@' + domain + '>\r\n');
+                log.push('C: RCPT TO:<test@' + domain + '>');
+                step = 3;
+              } else { log.push('MAIL FROM rejected'); socket.write('QUIT\r\n'); done(buildResult()); }
+            } else if (step === 3) {
+              if (line.startsWith('250')) {
+                socket.write('DATA\r\n');
+                log.push('C: DATA');
+                step = 4;
+              } else { log.push('RCPT TO rejected - relay blocked: ' + line); socket.write('QUIT\r\n'); done(buildResult()); }
+            } else if (step === 4) {
+              if (line.startsWith('354')) {
+                socket.write('Subject: Relay Test\r\n\r\nRelay test by M-Challenge Security Scanner.\r\n.\r\n');
+                log.push('C: DATA body sent');
+                step = 5;
+              } else { socket.write('QUIT\r\n'); done(buildResult()); }
+            } else if (step === 5) {
+              if (line.startsWith('250')) { relay_open = true; log.push('!!! OPEN RELAY DETECTED !!!'); }
+              socket.write('QUIT\r\n'); log.push('C: QUIT'); done(buildResult());
+            }
+          }
+        });
+        socket.on('close', () => { done(buildResult()); });
+      } catch (err: any) { log.push('EXCEPTION: ' + err.message); done(buildResult()); }
+    });
   }
 
   // Blacklist check (spec-exact: also checks MX IPs)

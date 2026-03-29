@@ -185,7 +185,7 @@ export default function WebScan() {
             <Tabs active={tab} onChange={setTab} tabs={[
               { key: 'findings', label: t('Findings'), count: (result.findings || []).length },
               { key: 'dns', label: 'DNS Security' },
-              { key: 'exposure', label: 'Exposures', count: (result.exposureFindings || result.exposure_findings || []).length },
+              { key: 'exposure', label: 'Attack Surface', count: (result.exposureFindings || result.exposure_findings || []).length },
               { key: 'discovery', label: 'Discovery' },
               { key: 'exploit', label: 'Exploitability', count: riskCards.length },
             ]} />
@@ -248,22 +248,51 @@ export default function WebScan() {
               </Card>
             )}
 
-            {/* Exposure Tab */}
-            {tab === 'exposure' && (
-              <div className="space-y-2">
+            {/* Attack Surface Tab */}
+            {tab === 'exposure' && (() => {
+              const exps = result.exposureFindings || result.exposure_findings || [];
+              const as_ = result.attackSurface || result.attack_surface;
+              const benign = as_?.benign ?? exps.filter((e: any) => !e.confidence || e.confidence === 'weak').length;
+              const review = as_?.review ?? exps.filter((e: any) => e.confidence === 'probable').length;
+              const critical = as_?.critical ?? exps.filter((e: any) => e.confidence === 'confirmed').length;
+              return (<div className="space-y-4">
+                {/* Attack Surface summary */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-mc-card border border-emerald-500/20 rounded-xl p-4 text-center">
+                    <div className="text-2xl font-bold text-emerald-400 font-mono">{benign}</div>
+                    <div className="text-[10px] text-mc-txt3 mt-1">🟢 Public Pages</div>
+                    <div className="text-[9px] text-mc-txt3">לגיטימי</div>
+                  </div>
+                  <div className="bg-mc-card border border-yellow-500/20 rounded-xl p-4 text-center">
+                    <div className="text-2xl font-bold text-yellow-400 font-mono">{review}</div>
+                    <div className="text-[10px] text-mc-txt3 mt-1">🟡 Needs Review</div>
+                    <div className="text-[9px] text-mc-txt3">דורש בדיקה</div>
+                  </div>
+                  <div className="bg-mc-card border border-red-500/20 rounded-xl p-4 text-center">
+                    <div className="text-2xl font-bold text-red-400 font-mono">{critical}</div>
+                    <div className="text-[10px] text-mc-txt3 mt-1">🔴 High Risk</div>
+                    <div className="text-[9px] text-mc-txt3">מאומת</div>
+                  </div>
+                </div>
+                <div className="text-[11px] text-mc-txt3 px-1">
+                  רק ממצאים <span className="text-red-400 font-semibold">מאומתים (High Risk)</span> משפיעים על הציון. Public Pages ו-Needs Review אינם מורידים ניקוד.
+                </div>
+                <div className="space-y-2">
                 {(result.exposureFindings || result.exposure_findings || []).map((e: any, i: number) => (
                   <Card key={i} className="px-4 py-3 flex items-center gap-3">
                     <Badge severity={e.severity}>{e.severity}</Badge>
                     <div className="flex-1 min-w-0">
                       <div className="text-xs font-mono text-white truncate">{e.path}</div>
-                      <div className="text-[10px] text-mc-txt3">HTTP {e.status_code} • {e.source}</div>
+                      <div className="text-[10px] text-mc-txt3">HTTP {e.status_code} • {e.source} {e.confidence ? `• ${e.confidence}` : ''}</div>
                     </div>
-                    {e.accessible && <span className="text-[9px] bg-mc-rose/10 text-mc-rose px-1.5 py-0.5 rounded-full font-medium">Accessible</span>}
+                    {e.confidence === 'confirmed' && <span className="text-[9px] bg-red-500/10 text-red-400 px-1.5 py-0.5 rounded-full font-medium">🔴 Confirmed</span>}
+                    {e.confidence === 'probable' && <span className="text-[9px] bg-yellow-500/10 text-yellow-400 px-1.5 py-0.5 rounded-full font-medium">🟡 Review</span>}
                   </Card>
                 ))}
                 {(result.exposureFindings || []).length === 0 && <EmptyState icon={ShieldCheck} title="No exposures detected" />}
-              </div>
-            )}
+                </div>
+              </div>);
+            })()}
 
             {/* Discovery Tab */}
             {tab === 'discovery' && (

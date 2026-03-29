@@ -238,8 +238,35 @@ export default function EmailScan() {
                 <Card className="p-4">
                   <h3 className="text-sm font-semibold text-white mb-2">SMTP Configuration {smtp.simulated && <Badge severity="info">Simulated</Badge>}</h3>
                   <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div className="text-mc-txt3">Open Relay</div><div className={smtp.relay_open ? 'text-mc-rose' : 'text-mc-emerald'}>{smtp.relay_open ? 'Yes ⚠' : 'No ✓'}</div>
+                    <div className="text-mc-txt3">Open Relay</div><div className={smtp.relay_open ? 'text-mc-rose font-bold' : 'text-mc-emerald'}>{smtp.relay_open ? '⚠️ OPEN RELAY' : 'No ✓'}</div>
                     <div className="text-mc-txt3">STARTTLS</div><div className={smtp.starttls_supported ? 'text-mc-emerald' : 'text-mc-rose'}>{smtp.starttls_supported ? 'Supported ✓' : 'Not Supported ⚠'}</div>
+                    {smtp.banner && <><div className="text-mc-txt3">Banner</div><div className="text-mc-txt font-mono text-[11px]">{smtp.banner}</div></>}
+                  </div>
+                  {smtp.log && smtp.log.length > 0 && (
+                    <div className="mt-3">
+                      <div className="text-[10px] text-mc-txt3 uppercase font-semibold mb-2">Relay Test Log</div>
+                      <div className="bg-mc-bg0 rounded-lg p-3 font-mono text-[11px] max-h-48 overflow-y-auto space-y-0.5">
+                        {smtp.log.map((line: string, i: number) => (
+                          <div key={i} className={
+                            line.startsWith('S:') ? 'text-blue-400' :
+                            line.startsWith('C:') ? 'text-emerald-400' :
+                            line.includes('OPEN RELAY') ? 'text-red-400 font-bold' :
+                            line.includes('rejected') ? 'text-orange-400' :
+                            'text-mc-txt3'
+                          }>{line}</div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {smtp.relay_open && smtp.recommendations?.length > 0 && (
+                    <div className="mt-3 space-y-1">
+                      <div className="text-[10px] text-red-400 uppercase font-bold mb-2">⚠️ המלצות לתיקון</div>
+                      {smtp.recommendations.map((r: string, i: number) => (
+                        <div key={i} className="bg-red-500/5 border-l-2 border-red-500/40 rounded px-3 py-2 text-[12px] text-red-300">{r}</div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="hidden">
                   </div>
                 </Card>
               </div>

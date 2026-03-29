@@ -84,4 +84,18 @@ export async function initScheduler() {
   const threatSchedules = await prisma.threatIntelSchedule.findMany({ where: { isActive: true } });
   for (const s of threatSchedules) registerScheduleCron('threat', s.id, s.startTime, s.frequency);
   console.log(`[Scheduler] ${activeCrons.size} cron jobs registered`);
+
+// CVE Daily Feed - every day at 07:00
+cron.schedule('0 7 * * *', async () => {
+  console.log('[CVE Cron] Starting daily CVE fetch...');
+  try {
+    const { CveService } = await import('../services/cve/cveService');
+    const svc = new CveService();
+    await svc.fetchAndStore();
+    await svc.sendDailyAlert();
+  } catch (err: any) {
+    console.error('[CVE Cron] Error:', err.message);
+  }
+}, { timezone: process.env.TZ || 'Asia/Jerusalem' });
+
 }

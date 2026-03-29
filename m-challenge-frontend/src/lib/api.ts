@@ -96,6 +96,10 @@ export const api = {
   // Nuclei
   nucleiScan: (data: any) => request<any>('POST', '/nuclei/scan', data),
   nucleiScans: () => request<any>('GET', '/nuclei/scans'),
+  cveList: (params?: string) => request<any>('GET', '/cve' + (params ? '?' + params : '')),
+  cveStats: () => request<any>('GET', '/cve/stats'),
+  cveRefresh: () => request<any>('POST', '/cve/refresh', {}),
+  cveSendAlert: () => request<any>('POST', '/cve/send-alert', {}),
   nucleiGetScan: (id: string) => request<any>('GET', '/nuclei/scan/' + id),
   nucleiDeleteScan: (id: string) => request<any>('DELETE', '/nuclei/scan/' + id),
 

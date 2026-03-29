@@ -17,7 +17,7 @@
 
 import { EmailService } from '../email/emailService';
 import { prisma } from '../../config/database';
-import { dnsResolve, safeFetch, safeGet, sleep, parallelBatch, countBySeverity, calculateWebScore, calculateRiskScore } from '../../utils/scanUtils';
+import { dnsResolve, safeFetch, safeGet, sleep, parallelBatch, countBySeverity, calculateWebScore, calculateRiskScore, classifyExposure } from '../../utils/scanUtils';
 
 interface ScanOptions {
   scanProfile: string;
@@ -119,7 +119,16 @@ export class WebScannerService {
 
       // ---- STAGE 9: FINALIZE (Scoring with exposure penalties + coverage penalty) ----
       const counts = countBySeverity(this.allFindings);
-      const exposureCounts = countBySeverity(exposures.filter((e: any) => e.accessible));
+      // Only confirmed exposures affect the score — benign/review paths don't penalize
+      const classifiedExposures = exposures.map((e: any) => ({ ...e, classification: classifyExposure(e) }));
+      const confirmedExposures = classifiedExposures.filter((e: any) => e.classification === 'critical');
+      const exposureCounts = countBySeverity(confirmedExposures);
+      const attackSurface = {
+        benign: classifiedExposures.filter((e: any) => e.classification === 'benign').length,
+        review: classifiedExposures.filter((e: any) => e.classification === 'review').length,
+        critical: confirmedExposures.length,
+        total: classifiedExposures.length,
+      };
       const coverage = { requestsMade: this.requestsMade, pagesScanned: this.pagesScanned, totalFindings: this.allFindings.length };
       const { score: webScore, cap, capReason, penalties } = calculateWebScore(counts, exposureCounts, coverage);
 
@@ -160,6 +169,7 @@ export class WebScannerService {
             penalty_breakdown: penalties,
             findings_by_severity: counts,
             unintended_exposure_risk: { critical: exposureCounts.critical, high: exposureCounts.high, medium: exposureCounts.medium, total_accessible: exposures.filter((e: any) => e.accessible).length },
+            attackSurface,
             data_sufficiency: { pages_scanned: this.pagesScanned, requests_made: this.requestsMade, paths_tested: discoveryMetrics.total_paths_tested },
           } as any,
         },
@@ -649,11 +659,68 @@ export class WebScannerService {
     }
 
     // === 8. Test all discovered paths via HEAD (parallel batches of 15) ===
-    // First, get homepage fingerprint to detect SPA fallback (returns index.html for all paths)
+    // --- Baseline fingerprint (homepage + 2 random nonexistent paths) ---
     const homepageRes = await safeFetch(targetBase, { method: 'HEAD', timeout: 5000 });
     const homepageContentType = homepageRes?.headers['content-type'] || '';
     const homepageContentLength = homepageRes?.headers['content-length'] || '';
     const isSpaLikely = homepageContentType.includes('text/html');
+
+    // Fetch baseline bodies for comparison
+    const baselinePaths = ['/this-path-should-not-exist-99281', '/.fake-secret-test-67890x'];
+    const baselineBodies: string[] = [];
+    for (const bp of baselinePaths) {
+      try {
+        const r = await safeGet(`${targetBase}${bp}`, 4000);
+        if (r?.body) baselineBodies.push(r.body.substring(0, 500).toLowerCase());
+      } catch {}
+    }
+    const baselineLen = homepageContentLength;
+
+    // CDN/WAF detection
+    const homepageHeaders = homepageRes?.headers || {};
+    const isCDN = ['akamai','cloudflare','fastly','imperva','sucuri','incapsula','cdn']
+      .some(cdn => JSON.stringify(homepageHeaders).toLowerCase().includes(cdn));
+
+    // Content signature validators
+    const CONTENT_SIGNATURES: Record<string, RegExp[]> = {
+      '.env':        [/[A-Z_]+=.+/, /APP_KEY=|DB_HOST=|DB_PASSWORD=|SECRET=|API_KEY=|DATABASE_URL=/i],
+      '.git/HEAD':   [/ref: refs\/heads\//],
+      '.git/config': [/\[core\]|\[remote "origin"\]/],
+      '.sql':        [/CREATE TABLE|INSERT INTO|DROP TABLE|LOCK TABLES|-- MySQL dump/i],
+      'backup.sql':  [/CREATE TABLE|INSERT INTO|DROP TABLE|LOCK TABLES|-- MySQL dump/i],
+      'dump.sql':    [/CREATE TABLE|INSERT INTO|DROP TABLE|LOCK TABLES|-- MySQL dump/i],
+      'db.sql':      [/CREATE TABLE|INSERT INTO|DROP TABLE|LOCK TABLES|-- MySQL dump/i],
+      'docker-compose': [/version:|services:|image:|ports:/],
+      'phpinfo':     [/PHP Version|phpinfo\(\)|php_info/i],
+      'web.config':  [/<configuration>|<system\.web>|<appSettings>/i],
+      '.htaccess':   [/RewriteEngine|RewriteRule|Deny from|Options/i],
+      'package.json':[/"name":|"version":|"dependencies":/],
+      'wp-config':   [/DB_NAME|DB_USER|DB_PASSWORD|table_prefix/i],
+      '.htpasswd':   [/:\$apr1\$|:\$2y\$|:[a-zA-Z0-9+/]{13}/],
+    };
+
+    function getContentSignature(path: string): RegExp[] | null {
+      for (const [key, patterns] of Object.entries(CONTENT_SIGNATURES)) {
+        if (path.includes(key)) return patterns;
+      }
+      return null;
+    }
+
+    function isGenericHtml(body: string): boolean {
+      const b = body.toLowerCase();
+      return b.includes('<!doctype html') || b.includes('<html') || b.includes('<head>') || b.includes('<body');
+    }
+
+    function isSimilarToBaseline(body: string): boolean {
+      if (baselineBodies.length === 0) return false;
+      const b = body.substring(0, 500).toLowerCase();
+      return baselineBodies.some(baseline => {
+        if (!baseline) return false;
+        // Simple similarity: if 60%+ of first 200 chars match
+        const overlap = [...b.substring(0,200)].filter((c, i) => baseline[i] === c).length;
+        return overlap / 200 > 0.6;
+      });
+    }
 
         // Deduplicate: remove locale/intl variants and limit similar paths
     const seenBases = new Set<string>();
@@ -691,51 +758,71 @@ export class WebScannerService {
           && !path.match(/\.(env|git|sql|bak|zip|log|cfg|conf|key|pem|json|yml|yaml|xml|map|php|asp|jsp)$/i)
           && !path.includes('.env') && !path.includes('.git');
 
-        if (isLikelySpaFallback) continue; // Skip SPA fallback pages
+        if (isLikelySpaFallback) continue;
 
-        // For critical files, do a GET to verify it's real content (not SPA fallback)
         const isCriticalPath = ['.env', '.git', 'secrets', 'backup.sql', 'dump.sql', 'db.sql', 'wp-config', '.htpasswd', 'docker-compose'].some(s => path.includes(s));
-        let reallyAccessible = res.status === 200;
+        const contentType = res.headers['content-type'] || '';
+        const contentLen = res.headers['content-length'] || '';
 
-        if (isCriticalPath && res.status === 200) {
-          // Double-check with GET to see if content is real or SPA HTML
-          const getCheck = await safeGet(fullUrl, 4000);
-          this.requestsMade++;
-          if (getCheck?.ok && getCheck.body) {
-            const bodyLower = getCheck.body.toLowerCase();
-            // If it returns HTML with typical SPA markers, it's a fallback
-            if (bodyLower.includes('<!doctype html') && (bodyLower.includes('id="root"') || bodyLower.includes('id="app"') || bodyLower.includes('script src'))) {
-              reallyAccessible = false;
+        if ((res.status === 401 || res.status === 403) && !isCriticalPath) continue;
+        if (res.status === 200 && baselineLen && contentLen === baselineLen && contentType.includes('text/html')) continue;
+
+        let confidence = 'weak';
+        let evidenceSnippet = '';
+
+        if (res.status === 200) {
+          const signatures = getContentSignature(path);
+          if (signatures) {
+            const getCheck = await safeGet(fullUrl, 5000);
+            this.requestsMade++;
+            const body = getCheck?.body || '';
+            if (isGenericHtml(body) || isSimilarToBaseline(body)) {
+              continue;
+            } else if (signatures.some((sig: RegExp) => sig.test(body))) {
+              confidence = isCDN ? 'probable' : 'confirmed';
+              const matchLine = body.split('\n').find((l: string) => signatures.some((s: RegExp) => s.test(l)));
+              evidenceSnippet = matchLine?.trim().substring(0, 100) || '';
+            } else {
+              continue;
             }
+          } else if (contentType.includes('text/html')) {
+            confidence = 'weak';
+          } else {
+            confidence = 'probable';
           }
+        } else {
+          confidence = isCriticalPath ? 'probable' : 'weak';
         }
 
-        if (!reallyAccessible && res.status === 200) continue; // Skip false positive
+        if (isCDN && confidence === 'confirmed') confidence = 'probable';
 
-        const severity: string = res.status === 200 && isCriticalPath ? 'critical'
-          : res.status === 200 && (path.includes('admin') || path.includes('.sql') || path.includes('.bak')) ? 'medium'
-          : res.status === 200 ? 'low' : 'info';
+        const severity: string = confidence === 'confirmed' && isCriticalPath ? 'critical'
+          : confidence === 'confirmed' ? 'high'
+          : confidence === 'probable' && isCriticalPath ? 'high'
+          : confidence === 'probable' ? 'medium'
+          : 'low';
 
         const pathSource = jsRoutes.has(path) ? 'js_analysis' : frameworkPaths.includes(path) ? 'framework' : STATIC_PATHS.includes(path) ? 'static' : 'discovery';
 
-        if (!exposures.find(e => e.path === path)) {
+        if (!exposures.find((e: any) => e.path === path)) {
           exposures.push({
             path, status_code: res.status, severity, source: pathSource,
             exposure: `${path} returns HTTP ${res.status}`,
-            risk_summary: res.status === 200 ? 'Publicly accessible' : 'Exists but access restricted',
-            accessible: res.status === 200,
-            evidence: { url: fullUrl, status: res.status, content_type: res.headers['content-type'] },
+            risk_summary: confidence === 'confirmed' ? 'Confirmed — real content verified'
+              : confidence === 'probable' ? 'Probable — manual verification recommended'
+              : 'Possible — low confidence',
+            accessible: res.status === 200, confidence,
+            evidence: { url: fullUrl, status: res.status, content_type: contentType, snippet: evidenceSnippet },
           });
         }
 
-        // Add as finding if critical/high
         if (severity === 'critical' || severity === 'high') {
           this.addFinding({ id: `exposure-${path.replace(/[^a-z0-9]/gi, '-')}`, title: `Sensitive File Exposed: ${path}`,
             category: 'disclosure', severity,
-            description: `${path} is accessible (HTTP ${res.status}).`,
+            description: `${path} is accessible (HTTP ${res.status}). Confidence: ${confidence}.`,
             impact: 'Sensitive data or configuration may be exposed',
             recommendation: `Restrict access to ${path} or remove it from the web server`,
-            evidence: { url: fullUrl, status: res.status } });
+            evidence: { url: fullUrl, status: res.status, snippet: evidenceSnippet } });
         }
       }
     }

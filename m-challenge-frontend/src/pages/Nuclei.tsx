@@ -162,7 +162,7 @@ export default function NucleiPage() {
                     )}
                   </div>
                   <div className="flex gap-1 shrink-0">
-                    {s.status === 'COMPLETED' && s.findings?.length > 0 && (
+                    {s.status === 'COMPLETED' && (
                       <button onClick={() => setExpandedId(expandedId === s.id ? null : s.id)}
                         className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-mc-brand/10 border border-mc-brand/20 text-mc-brand text-[11px] font-medium hover:bg-mc-brand/20 transition">
                         פירוט {expandedId === s.id ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
@@ -175,7 +175,31 @@ export default function NucleiPage() {
                 {/* Findings panel */}
                 {expandedId === s.id && s.findings && (
                   <div className="border-t border-mc-cardBorder bg-mc-bg2 p-4">
-                    <div className="text-xs font-semibold text-white mb-3">ממצאים ({s.findings.length})</div>
+                    <div className="text-xs font-semibold text-white mb-3">תוצאות סריקה ({s.findings.length} ממצאים)</div>
+                    {s.findings.length === 0 ? (
+                      <div className="flex flex-col items-center py-6 gap-2">
+                        <div className="w-12 h-12 rounded-full bg-emerald-500/15 flex items-center justify-center">
+                          <span className="text-2xl">✅</span>
+                        </div>
+                        <div className="text-sm font-semibold text-emerald-400">לא נמצאו פגיעויות!</div>
+                        <div className="text-[11px] text-mc-txt3 text-center max-w-xs">הסריקה בדקה CVEs, misconfigurations ו-exposures ידועות — הטארגט נקי.</div>
+                        <div className="mt-3 grid grid-cols-3 gap-3 w-full max-w-sm">
+                          <div className="bg-mc-bg1 rounded-lg p-2 text-center border border-mc-cardBorder">
+                            <div className="text-xs font-bold text-mc-brand">CVE</div>
+                            <div className="text-[10px] text-mc-txt3">נבדק</div>
+                          </div>
+                          <div className="bg-mc-bg1 rounded-lg p-2 text-center border border-mc-cardBorder">
+                            <div className="text-xs font-bold text-mc-brand">Misconfig</div>
+                            <div className="text-[10px] text-mc-txt3">נבדק</div>
+                          </div>
+                          <div className="bg-mc-bg1 rounded-lg p-2 text-center border border-mc-cardBorder">
+                            <div className="text-xs font-bold text-mc-brand">Exposure</div>
+                            <div className="text-[10px] text-mc-txt3">נבדק</div>
+                          </div>
+                        </div>
+                        <div className="text-[10px] text-mc-txt3 mt-1">טארגט: <span className="font-mono text-white">{s.target}</span> • {new Date(s.completed_at).toLocaleString('he-IL')}</div>
+                      </div>
+                    ) : (
                     <div className="space-y-2 max-h-96 overflow-y-auto">
                       {s.findings.map((f: any, i: number) => (
                         <div key={i} className={`px-3 py-2.5 rounded-lg border ${SEV_COLORS[f.severity] || SEV_COLORS.info}`}>
@@ -189,6 +213,7 @@ export default function NucleiPage() {
                         </div>
                       ))}
                     </div>
+                    )}
                   </div>
                 )}
               </div>

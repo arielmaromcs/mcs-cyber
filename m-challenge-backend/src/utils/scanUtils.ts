@@ -151,63 +151,56 @@ export function countBySeverity(findings: any[]): { critical: number; high: numb
  * Calculate web security score using the weighted budget system from spec.
  * Now includes exposure penalties as separate budget.
  */
+// Classify exposure into benign / review / critical
+export function classifyExposure(exp: { path: string; confidence?: string; severity?: string; status_code?: number; source?: string }): 'benign' | 'review' | 'critical' {
+  if (exp.confidence === 'confirmed' && (exp.severity === 'critical' || exp.severity === 'high')) return 'critical';
+  const benignPatterns = [
+    /^\/about/, /^\/contact/, /^\/blog/, /^\/sitemap/, /^\/rss/,
+    /^\/terms/, /^\/accessibility/, /humans\.txt/, /security\.txt/,
+    /^\/writers/, /^\/podcast/, /^\/archive/, /^\/magazine/,
+    /^\/track/, /^\/independenceday/, /^\/rotteriframe/,
+  ];
+  if (benignPatterns.some(p => p.test(exp.path))) return 'benign';
+  if (exp.source === 'js_analysis' && exp.severity === 'low') return 'benign';
+  if (exp.status_code === 401 || exp.status_code === 403) return 'review';
+  if (exp.path.includes('/api/') || exp.path.includes('/admin') || exp.path.includes('/dashboard')) return 'review';
+  if (exp.confidence === 'weak' || !exp.confidence) return 'benign';
+  return 'review';
+}
+
 export function calculateWebScore(
   counts: { critical: number; high: number; medium: number; low: number },
   exposureCounts?: { critical: number; high: number; medium: number; low: number },
   coverage?: { requestsMade: number; pagesScanned: number; totalFindings: number }
-): { score: number; cap: number | null; capReason: string | null; penalties: Record<string, number> } {
-  // Finding penalties (capped per severity)
-  const critPenalty = Math.min(counts.critical * 15, 45);
-  const highPenalty = Math.min(counts.high * 8, 25);
-  const medPenalty = Math.min(counts.medium * 4, 20);
-  const lowPenalty = Math.min(counts.low * 2, 10);
-
-  // Exposure penalties (separate budget, half weight)
+): { score: number; cap: number | null; capReason: string | null; penalties: Record<string, number>; breakdown: Record<string, any> } {
+  const critPenalty = Math.min(counts.critical * 20, 60);
+  const highPenalty = Math.min(counts.high * 10, 30);
+  const medPenalty = Math.min(counts.medium * 5, 20);
+  const lowPenalty = Math.min(counts.low * 2, 8);
   const ec = exposureCounts || { critical: 0, high: 0, medium: 0, low: 0 };
-  const expCritPenalty = Math.min(ec.critical * 15, 22.5);
-  const expHighPenalty = Math.min(ec.high * 8, 12.5);
-  const expMedPenalty = Math.min(ec.medium * 4, 10);
-  const expLowPenalty = Math.min(ec.low * 2, 5);
-
-  const totalPenalty = critPenalty + highPenalty + medPenalty + lowPenalty +
-    expCritPenalty + expHighPenalty + expMedPenalty + expLowPenalty;
-
-  // Coverage penalty: if scan barely ran, deduct 15
+  const expCritPenalty = Math.min(ec.critical * 20, 40);
+  const expHighPenalty = Math.min(ec.high * 8, 16);
+  const totalPenalty = critPenalty + highPenalty + medPenalty + lowPenalty + expCritPenalty + expHighPenalty;
   let coveragePenalty = 0;
   if (coverage && coverage.requestsMade < 5 && coverage.pagesScanned < 1 && coverage.totalFindings === 0) {
     coveragePenalty = 15;
   }
-
-  let score = Math.max(0, Math.min(100, 100 - totalPenalty - coveragePenalty));
-
-  // Worst-case caps (applied in order, lowest wins)
+  let score = Math.max(20, Math.min(100, 100 - totalPenalty - coveragePenalty));
   let cap: number | null = null;
   let capReason: string | null = null;
-
-  if (ec.critical > 0) { cap = 30; capReason = 'Critical exposure found'; }
-  if (counts.critical >= 2 && (cap === null || 25 < cap)) { cap = 25; capReason = '2+ critical findings'; }
-  else if (counts.critical === 1 && (cap === null || 45 < cap)) { cap = 45; capReason = '1 critical finding'; }
-  if (ec.high >= 1 && (cap === null || 50 < cap)) { cap = 50; capReason = 'High-severity exposure found'; }
-  if (counts.high >= 2 && (cap === null || 55 < cap)) { cap = 55; capReason = '2+ high severity findings'; }
-  else if (counts.high === 1 && (cap === null || 65 < cap)) { cap = 65; capReason = '1 high severity finding'; }
-
+  if (ec.critical >= 2) { cap = 25; capReason = '2+ confirmed critical exposures'; }
+  else if (ec.critical === 1) { cap = 40; capReason = 'Confirmed critical exposure'; }
+  else if (counts.critical >= 2) { cap = 30; capReason = '2+ critical findings'; }
+  else if (counts.critical === 1) { cap = 50; capReason = '1 critical finding'; }
+  else if (counts.high >= 3) { cap = 60; capReason = '3+ high severity findings'; }
   if (cap !== null) score = Math.min(score, cap);
-
   return {
-    score: Math.round(score),
-    cap,
-    capReason,
-    penalties: {
-      critical: critPenalty, high: highPenalty, medium: medPenalty, low: lowPenalty,
-      exposure_critical: expCritPenalty, exposure_high: expHighPenalty, exposure_medium: expMedPenalty, exposure_low: expLowPenalty,
-      coverage: coveragePenalty,
-    },
+    score: Math.round(score), cap, capReason,
+    penalties: { critical: critPenalty, high: highPenalty, medium: medPenalty, low: lowPenalty, exposure_critical: expCritPenalty, exposure_high: expHighPenalty, coverage: coveragePenalty },
+    breakdown: { findings: counts, confirmedExposures: { critical: ec.critical, high: ec.high }, totalPenalty: Math.round(totalPenalty) },
   };
 }
 
-/**
- * Calculate composite risk score: 60% web + 25% DNS + 15% email
- */
 export function calculateRiskScore(webScore: number, dnsScore: number, emailScore: number = 0): number {
-  return Math.round((100 - webScore) * 0.60 + (100 - dnsScore) * 0.25 + (100 - emailScore) * 0.15);
+  return Math.max(0, Math.min(100, Math.round(webScore * 0.50 + dnsScore * 0.30 + (emailScore || webScore) * 0.20)));
 }

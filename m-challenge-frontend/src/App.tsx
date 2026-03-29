@@ -15,6 +15,7 @@ import LoginPage from './pages/Login';
 import CustomersPage from './pages/Clients';
 import NucleiPage from './pages/Nuclei';
 import PenTestPage from './pages/PenTest';
+import CvePage from './pages/Cve';
 
 export default function App() {
   return (
@@ -35,6 +36,7 @@ export default function App() {
           <Route path="/customers" element={<CustomersPage />} />
           <Route path="/nuclei" element={<NucleiPage />} />
           <Route path="/pentest" element={<PenTestPage />} />
+          <Route path="/cve" element={<CvePage />} />
         </Routes>
       </Layout>
     </AuthProvider>

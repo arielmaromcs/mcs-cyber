@@ -214,8 +214,11 @@ export function generateEmailReport(result: any, target: string): string {
     (dmarc.policy ? "<div class=\"info-row\"><span class=\"k\">Policy</span><span class=\"v\">" + dmarc.policy + "</span></div>" : "") +
     "</div>" +
     "<div class=\"section\"><h2>SMTP Configuration</h2>" +
-    "<div class=\"info-row\"><span class=\"k\">Open Relay</span><span class=\"v " + (smtp.relay_open ? "red" : "green") + "\">" + (smtp.relay_open ? "Yes ⚠" : "No ✓") + "</span></div>" +
+    "<div class=\"info-row\"><span class=\"k\">Open Relay</span><span class=\"v " + (smtp.relay_open ? "red" : "green") + "\">" + (smtp.relay_open ? "Yes ⚠ OPEN RELAY DETECTED" : "No ✓") + "</span></div>" +
     "<div class=\"info-row\"><span class=\"k\">STARTTLS</span><span class=\"v " + (smtp.starttls_supported ? "green" : "red") + "\">" + (smtp.starttls_supported ? "Supported ✓" : "Not Supported ⚠") + "</span></div>" +
+    (smtp.banner ? "<div class=\"info-row\"><span class=\"k\">Banner</span><span class=\"v\" style=\"font-family:monospace;font-size:11px\">" + smtp.banner + "</span></div>" : "") +
+    (smtp.log && smtp.log.length ? "<div style=\"margin-top:12px\"><div style=\"font-size:11px;color:#64748b;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px\">Relay Test Log</div><div style=\"background:#0f1b2d;border-radius:8px;padding:12px;font-family:monospace;font-size:11px;color:#94a3b8;max-height:200px;overflow-y:auto\">" + smtp.log.map((l: string) => "<div style=\"color:" + (l.startsWith("S:") ? "#60a5fa" : l.startsWith("C:") ? "#34d399" : l.includes("OPEN RELAY") ? "#ef4444" : l.includes("rejected") ? "#f97316" : "#94a3b8") + "\">" + l + "</div>").join("") + "</div></div>" : "") +
+    (smtp.relay_open && smtp.recommendations?.length ? "<div style=\"margin-top:12px\"><div style=\"font-size:11px;color:#ef4444;margin-bottom:6px;font-weight:700\">⚠️ המלצות לתיקון Open Relay</div>" + smtp.recommendations.map((r: string) => "<div style=\"background:#ef444410;border-left:3px solid #ef4444;border-radius:4px;padding:8px 10px;margin-bottom:4px;font-size:12px;color:#fca5a5\">" + r + "</div>").join("") + "</div>" : "") +
     "</div>" +
     blacklistHtml + dnsHtml + whoisHtml + findingsHtml + recsHtml +
     generateFooter() +

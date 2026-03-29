@@ -1,7 +1,7 @@
 import ClientIpBadge from "./ClientIpBadge";
 import { ReactNode, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { Shield, Globe, Mail, Crosshair, Target, Calendar, Settings, Info, LogOut, Languages, ChevronDown, PanelLeftClose, PanelLeft, HelpCircle, Lock, Users, Zap, ShieldAlert } from 'lucide-react';
+import { Shield, Globe, Mail, Crosshair, Target, Calendar, Settings, Info, LogOut, Languages, ChevronDown, PanelLeftClose, PanelLeft, HelpCircle, Lock, Users, Zap, ShieldAlert, Rss, Sun, Moon } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useLang } from '../hooks/useLang';
 
@@ -17,6 +17,7 @@ const NAV_ITEMS = [
   { to: '/customers', icon: Users, label: 'Customers', requiresAuth: 'admin' },
   { to: '/nuclei', icon: Zap, label: 'Nuclei Scanner', requiresAuth: '' },
   { to: '/pentest', icon: ShieldAlert, label: 'PenTest Reports', requiresAuth: '' },
+  { to: '/cve', icon: Rss, label: 'CVE Feed', requiresAuth: '' },
   { to: '/help', icon: HelpCircle, label: 'Help Center', requiresAuth: '' },
 ];
 
@@ -27,6 +28,19 @@ export function Layout({ children }: { children: ReactNode }) {
   const { t, isRTL: rtl } = useLang();
   const [collapsed, setCollapsed] = useState(false);
   const [lang, setLang] = useState<'he' | 'en'>(() => (localStorage.getItem('mc_lang') as 'he' | 'en') || 'he');
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => (localStorage.getItem('mc_theme') as 'dark' | 'light') || 'dark');
+
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    localStorage.setItem('mc_theme', next);
+    document.documentElement.classList.toggle('light', next === 'light');
+  };
+
+  // Apply theme on mount
+  if (typeof document !== 'undefined') {
+    document.documentElement.classList.toggle('light', theme === 'light');
+  }
 
   const toggleLang = () => {
     const next = lang === 'he' ? 'en' : 'he';
@@ -96,6 +110,13 @@ export function Layout({ children }: { children: ReactNode }) {
             className={`flex items-center gap-2 w-full px-3 py-2 rounded-lg text-mc-txt3 hover:text-mc-txt2 hover:bg-mc-bg2 transition text-xs font-medium ${collapsed ? 'justify-center px-0' : ''}`}>
             <Languages size={15} />
             {!collapsed && (lang === 'he' ? 'עברית' : 'English')}
+          </button>
+
+          {/* Theme toggle */}
+          <button onClick={toggleTheme}
+            className={`flex items-center gap-2 w-full px-3 py-2 rounded-lg text-mc-txt3 hover:text-mc-txt2 hover:bg-mc-bg2 transition text-xs font-medium ${collapsed ? 'justify-center px-0' : ''}`}>
+            {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+            {!collapsed && (theme === 'dark' ? 'Light Mode' : 'Dark Mode')}
           </button>
 
           {/* Collapse toggle */}

@@ -8,7 +8,9 @@ RUN npx prisma generate
 RUN npx tsc
 
 FROM node:20-alpine
-RUN apk add --no-cache openssl nmap nmap-scripts sslscan
+RUN apk add --no-cache openssl nmap nmap-scripts sslscan curl
+# Install naabu for fast port scanning
+RUN curl -sL https://github.com/projectdiscovery/naabu/releases/download/v2.3.1/naabu_2.3.1_linux_amd64.zip -o /tmp/naabu.zip &&     unzip /tmp/naabu.zip -d /tmp &&     mv /tmp/naabu /usr/local/bin/naabu &&     chmod +x /usr/local/bin/naabu &&     rm /tmp/naabu.zip
 WORKDIR /app
 
 # Copy everything needed at runtime

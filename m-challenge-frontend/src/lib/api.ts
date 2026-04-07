@@ -109,5 +109,7 @@ export const api = {
   pentestGetReport: (id: string) => request<any>('GET', '/pentest/report/' + id),
   pentestDeleteReport: (id: string) => request<any>('DELETE', '/pentest/report/' + id),
   pentestHtmlUrl: (id: string) => '/api/pentest/report/' + id + '/html',
+  exploitScan: (data: any) => request<any>('POST', '/exploit/scan', data),
+  exploitStatus: (jobId: string) => request<any>('GET', '/exploit/status/' + jobId),
   createFullScanSchedule: (data: any) => request<any>('POST', '/full-scan/start', data),
 };

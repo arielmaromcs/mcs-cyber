@@ -37,6 +37,7 @@ export default function App() {
           <Route path="/nuclei" element={<NucleiPage />} />
           <Route path="/pentest" element={<PenTestPage />} />
           <Route path="/cve" element={<CvePage />} />
+          <Route path="/exploit" element={<ExploitPage />} />
         </Routes>
       </Layout>
     </AuthProvider>

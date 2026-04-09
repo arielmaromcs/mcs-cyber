@@ -1,5 +1,6 @@
 import ClientIpBadge from "./components/ClientIpBadge";
 import { Routes, Route, Navigate } from 'react-router-dom';
+import ExploitPage from './pages/Exploit';
 import { AuthProvider } from './hooks/useAuth';
 import { Layout } from './components/Layout';
 import WebScanPage from './pages/WebScan';
